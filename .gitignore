@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.backup
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+storage/
+bootstrap/cache/
+*.log
+.phpunit.result.cache
+
+# Test/Debug files (keep structure, ignore scripts)
+tests/*.php
+!tests/Feature/
+!tests/Unit/
+
+# Temporary files
+nul
+*.tmp
+
+# Mobile specific
+flexxus-picking-mobile/expo-shared-assets/
+flexxus-picking-mobile/.expo/
+flexxus-picking-mobile/node_modules/
+
+# Sensitive data
+*.key
+*.pem
+coverage-report.md
