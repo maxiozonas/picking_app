@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Http\Requests\Picking;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class GetStockForItemRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            // Currently no body parameters needed, but kept for future expansion
+        ];
+    }
+}

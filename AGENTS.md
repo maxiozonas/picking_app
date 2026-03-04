@@ -209,6 +209,18 @@ class PickingService implements PickingServiceInterface
 - ✅ Lanzar `\Exception` con mensajes descriptivos
 - ✅ NO lógica de negocio en controladores (solo validación y orchestration)
 
+##### Picking Domain Services
+
+The following services are available in the `App\Services\Picking` namespace:
+
+| Service | Interface | Description |
+|---------|-----------|-------------|
+| `PickingService` | `PickingServiceInterface` | Core picking operations (start, pick, complete) |
+| `StockValidationService` | `StockValidationServiceInterface` | Real-time stock validation with Flexxus |
+| `StockCacheService` | `StockCacheServiceInterface` | Aggressive caching (45s TTL) for stock data |
+| `AlertService` | `AlertServiceInterface` | Alert management for stock issues |
+| `FlexxusPickingService` | - | External API client for Flexxus ERP |
+
 #### Controllers (API RESTful)
 ```php
 <?php
@@ -399,40 +411,337 @@ Controller → Service → Repository/Model → Database
 
 ---
 
-## ⚠️ Manejo de Errores
+## ⚠️ Exception Handling Guidelines
 
-### Exceptions
+### Custom Exception Hierarchy
+
+**NEVER throw generic `\Exception`** for domain-specific conditions. Always use custom exceptions:
+
 ```php
-// Lógica de negocio
-if (!$warehouse) {
-    throw new \Exception('User does not have a warehouse assigned');
+// ❌ BAD - Generic exception
+if (!$order) {
+    throw new \Exception('Order not found');
 }
 
-// Not found
-$user = User::findOrFail($userId); // 404 automáticamente
-
-// Validación
-$request->validated(); // Lanza ValidationException (422)
+// ✅ GOOD - Domain-specific exception
+if (!$order) {
+    throw new OrderNotFoundException($orderNumber, [
+        'warehouse_id' => $user->warehouse_id,
+        'user_id' => $user->id
+    ]);
+}
 ```
 
-### Respuestas de Error
+### Available Custom Exceptions
+
+#### Picking Domain Exceptions
+
+| Exception | HTTP Status | Error Code | When to Use |
+|-----------|-------------|------------|-------------|
+| `OrderNotFoundException` | 404 | `ORDER_NOT_FOUND` | Order not in Flexxus or local DB |
+| `InvalidOrderStateException` | 400 | `INVALID_ORDER_STATE` | Invalid state transition |
+| `WarehouseMismatchException` | 403 | `WAREHOUSE_MISMATCH` | Cross-warehouse access attempt |
+| `OverPickException` | 400 | `OVER_PICK` | Attempting to pick more than required quantity |
+| `PhysicalStockInsufficientException` | 400 | `PHYSICAL_STOCK_INSUFFICIENT` | Physical stock in warehouse is insufficient |
+| `AlreadyPickedException` | 400 | `ALREADY_PICKED` | Item already fully picked |
+| `InsufficientStockException` | 400 | `INSUFFICIENT_STOCK` | **DEPRECATED** - Use OverPickException or PhysicalStockInsufficientException |
+| `UnauthorizedOperationException` | 403 | `FORBIDDEN` | Permission/ownership violation |
+
+#### External API Exceptions
+
+| Exception | HTTP Status | Error Code | When to Use |
+|-----------|-------------|------------|-------------|
+| `ExternalApiConnectionException` | 503 | `FLEXXUS_CONNECTION_ERROR` | Network/timeouts |
+| `ExternalApiAuthenticationException` | 502 | `FLEXXUS_AUTH_FAILED` | Auth failures |
+| `ExternalApiRequestException` | 502 | `FLEXXUS_REQUEST_FAILED` | API errors after retry |
+| `ExternalApiServerErrorException` | 502 | `FLEXXUS_SERVER_ERROR` | 5xx from Flexxus |
+
+### Throwing Exceptions
+
+**Always include context** for debugging:
+
 ```php
-// 401 Unauthorized
-return response()->json(['message' => 'Unauthenticated'], 401);
+// Service Layer Example
+use App\Exceptions\Picking\OrderNotFoundException;
+use App\Exceptions\Picking\InvalidOrderStateException;
+use App\Exceptions\Picking\OverPickException;
+use App\Exceptions\Picking\PhysicalStockInsufficientException;
+use App\Exceptions\Picking\AlreadyPickedException;
 
-// 403 Forbidden
-return response()->json(['message' => 'Forbidden'], 403);
+public function startOrder(string $orderNumber, User $user): PickingOrder
+{
+    // 1. Check if order exists
+    $order = $this->flexxusService->getOrder($orderNumber);
+    if (!$order) {
+        throw new OrderNotFoundException($orderNumber, [
+            'warehouse_id' => $user->warehouse_id,
+            'user_id' => $user->id
+        ]);
+    }
 
-// 404 Not Found
+    // 2. Check state transition
+    if ($order->status !== 'pending') {
+        throw new InvalidOrderStateException(
+            $orderNumber,
+            $order->status,
+            'start',
+            ['current_status' => $order->status]
+        );
+    }
+
+    // 3. Business logic continues...
+}
+```
+
+**External API Exceptions**:
+
+```php
+use App\Exceptions\ExternalApi\ExternalApiConnectionException;
+use App\Exceptions\ExternalApi\ExternalApiAuthenticationException;
+
+public function fetchOrder(string $orderNumber): array
+{
+    try {
+        $response = $this->httpClient->get("/orders/{$orderNumber}");
+
+        if ($response->status() === 401) {
+            throw new ExternalApiAuthenticationException(
+                $this->baseUrl . "/orders/{$orderNumber}",
+                401
+            );
+        }
+
+        return $response->json();
+
+    } catch (\GuzzleHttp\Exception\ConnectException $e) {
+        throw new ExternalApiConnectionException(
+            $this->baseUrl . "/orders/{$orderNumber}",
+            $e
+        );
+    }
+}
+```
+
+### Controller Exception Handling
+
+**DO NOT catch exceptions in controllers** - let the global handler manage them:
+
+```php
+// ❌ BAD - Controller catches exceptions
+public function start(Request $request, string $orderNumber)
+{
+    try {
+        $order = $this->pickingService->startOrder($orderNumber, $request->user());
+        return response()->json(['data' => $order]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+// ✅ GOOD - Controller delegates to global handler
+public function start(Request $request, string $orderNumber)
+{
+    $order = $this->pickingService->startOrder($orderNumber, $request->user());
+    return new PickingOrderResource($order);
+}
+```
+
+### Exception Context Best Practices
+
+**Include relevant debugging information**:
+
+```php
+throw new InsufficientStockException(
+    $orderNumber,
+    $itemCode,
+    $requestedQty,
+    $availableQty,
+    [
+        'warehouse_id' => $warehouse->id,
+        'location' => $item->location,
+        'user_id' => $user->id,
+        'timestamp' => now()->toIso8601String()
+    ]
+);
+```
+
+**Context fields to include**:
+- ✅ IDs: `order_number`, `user_id`, `warehouse_id`
+- ✅ State: `current_state`, `attempted_action`
+- ✅ Quantities: `requested_quantity`, `available_quantity`
+- ✅ URLs: `endpoint` (for API errors)
+- ✅ Previous exceptions: Chain with `$previous`
+
+### Testing Exceptions
+
+**Write tests that assert specific exception types**:
+
+```php
+use App\Exceptions\Picking\OrderNotFoundException;
+use PHPUnit\Framework\TestCase;
+
+class PickingServiceTest extends TestCase
+{
+    public function test_start_order_throws_not_found_when_missing()
+    {
+        // Arrange
+        $service = new PickingService($mockFlexxus);
+        $orderNumber = 'NP-999';
+
+        // Expect
+        $this->expectException(OrderNotFoundException::class);
+        $this->expectExceptionMessage("Order {$orderNumber} not found");
+
+        // Act
+        $service->startOrder($orderNumber, $user);
+    }
+
+    public function test_pick_item_throws_insufficient_stock()
+    {
+        // Arrange
+        $service = new PickingService($mockFlexxus);
+
+        // Expect
+        $this->expectException(InsufficientStockException::class);
+        $this->expectExceptionCode(400); // HTTP status
+
+        // Act
+        $service->pickItem($order, 'PROD-001', 100); // Only 50 available
+    }
+}
+```
+
+### Creating New Exception Types
+
+**Follow the exception hierarchy**:
+
+1. **Extend BaseException**:
+
+```php
+<?php
+
+namespace App\Exceptions\Picking;
+
+use App\Exceptions\BaseException;
+
+class NewDomainException extends BaseException
+{
+    public function __construct(
+        string $relevantIdentifier,
+        array $context = []
+    ) {
+        $message = "Descriptive message about {$relevantIdentifier}";
+
+        $context['relevant_field'] = $relevantIdentifier;
+
+        parent::__construct(
+            $message,
+            'ERROR_CODE_CONSTANT',  // Use UPPER_SNAKE_CASE
+            400,                     // Appropriate HTTP status
+            $context
+        );
+    }
+}
+```
+
+2. **Add to Handler** (`app/Exceptions/Handler.php`):
+
+```php
+use App\Exceptions\Picking\NewDomainException;
+
+public function render($request, Throwable $e)
+{
+    if ($e instanceof NewDomainException) {
+        return response()->json([
+            'error' => [
+                'message' => $e->getMessage(),
+                'error_code' => $e->getErrorCode(),
+                'details' => config('app.debug') ? $e->getContext() : null
+            ]
+        ], $e->getHttpStatus());
+    }
+
+    // ... other exceptions
+}
+```
+
+3. **Write tests**:
+
+```php
+// tests/Unit/Exceptions/NewDomainExceptionTest.php
+public function test_exception_has_correct_error_code()
+{
+    $exception = new NewDomainException('test-id');
+
+    $this->assertEquals('ERROR_CODE_CONSTANT', $exception->getErrorCode());
+    $this->assertEquals(400, $exception->getHttpStatus());
+}
+```
+
+### Error Response Format
+
+**All errors follow this structure**:
+
+```json
+{
+  "error": {
+    "message": "Human-readable error description",
+    "error_code": "ERROR_CODE_CONSTANT",
+    "details": {
+      // Only present in development (app.debug=true)
+      "context_field": "value"
+    }
+  }
+}
+```
+
+**For complete error code reference**, see `docs/error-codes.md`
+
+### Common Exception Patterns
+
+**Pattern 1: Not Found**
+```php
+throw new OrderNotFoundException($orderNumber, [
+    'warehouse_id' => $user->warehouse_id
+]);
+```
+
+**Pattern 2: Invalid State**
+```php
+throw new InvalidOrderStateException(
+    $orderNumber,
+    $currentState,
+    $attemptedAction,
+    ['allowed_states' => ['pending', 'ready']]
+);
+```
+
+**Pattern 3: External API Failure**
+```php
+try {
+    $response = $this->client->get($endpoint);
+} catch (ConnectException $e) {
+    throw new ExternalApiConnectionException($endpoint, $e);
+} catch (RequestException $e) {
+    if ($e->getResponse()->getStatusCode() === 401) {
+        throw new ExternalApiAuthenticationException($endpoint, 401);
+    }
+    throw new ExternalApiRequestException(
+        $endpoint,
+        $e->getResponse()->getStatusCode(),
+        $e->getResponse()->getBody()->getContents()
+    );
+}
+```
+
+### Legacy Error Responses (Deprecated)
+
+```php
+// ⚠️ DEPRECATED - Do not use in new code
 return response()->json(['message' => 'Resource not found'], 404);
 
-// 422 Validation Error
-throw ValidationException::withMessages([
-    'quantity' => ['Quantity must be greater than 0']
-]);
-
-// 500 Server Error
-return response()->json(['message' => 'Internal server error'], 500);
+// ✅ INSTEAD - Throw exception
+throw new OrderNotFoundException($identifier);
 ```
 
 ---

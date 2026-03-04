@@ -2,6 +2,11 @@
 
 namespace App\Http\Clients\Flexxus;
 
+use App\Exceptions\ExternalApi\ExternalApiAuthenticationException;
+use App\Exceptions\ExternalApi\ExternalApiConnectionException;
+use App\Exceptions\ExternalApi\ExternalApiRequestException;
+use App\Exceptions\ExternalApi\ExternalApiServerErrorException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -31,18 +36,48 @@ class FlexxusClient implements FlexxusClientInterface
             'deviceinfo' => json_encode($this->deviceInfo),
         ];
 
-        $response = Http::timeout(30)
-            ->withHeaders(['Content-Type' => 'application/json'])
-            ->post("{$this->baseUrl}/v2/auth/login", $payload);
+        $endpoint = "{$this->baseUrl}/v2/auth/login";
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($endpoint, $payload);
+        } catch (ConnectionException $e) {
+            throw new ExternalApiConnectionException(
+                $endpoint,
+                $e
+            );
+        }
 
         if (! $response->successful()) {
-            throw new \RuntimeException('Flexxus authentication failed: '.$response->body());
+            $statusCode = $response->status();
+
+            if ($statusCode === 401 || $statusCode === 403) {
+                throw new ExternalApiAuthenticationException(
+                    $endpoint,
+                    $statusCode,
+                    ['response_body' => $response->body()]
+                );
+            }
+
+            // Other error responses (4xx, 5xx)
+            throw new ExternalApiRequestException(
+                $endpoint,
+                $statusCode,
+                $response->body(),
+                ['response_body' => $response->body()]
+            );
         }
 
         $data = $response->json();
 
         if (! $data || ! isset($data['token'])) {
-            throw new \RuntimeException('Invalid authentication response from Flexxus: '.$response->body());
+            throw new ExternalApiRequestException(
+                $endpoint,
+                200,
+                'Invalid authentication response from Flexxus',
+                ['response_body' => $response->body()]
+            );
         }
 
         // expireIn and refreshExpireIn are Unix timestamps, convert to seconds from now
@@ -68,25 +103,78 @@ class FlexxusClient implements FlexxusClientInterface
 
     public function request(string $method, string $endpoint, array $data = []): array
     {
-        $token = Cache::get('flexxus_token');
+        $fullUrl = "{$this->baseUrl}{$endpoint}";
 
-        if (! $token) {
-            $this->authenticate();
+        try {
             $token = Cache::get('flexxus_token');
+
+            if (! $token) {
+                $this->authenticate();
+                $token = Cache::get('flexxus_token');
+            }
+
+            $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
+
+            if ($response->status() === 401) {
+                $this->authenticate();
+                $token = Cache::get('flexxus_token');
+                $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
+            }
+
+            if (! $response->successful()) {
+                $this->throwExceptionForFailedResponse($response, $fullUrl);
+            }
+
+            return $response->json() ?? [];
+        } catch (ConnectionException $e) {
+            throw new ExternalApiConnectionException(
+                $fullUrl,
+                $e
+            );
+        }
+    }
+
+    private function throwExceptionForFailedResponse($response, string $endpoint): void
+    {
+        $statusCode = $response->status();
+        $responseBody = $response->body();
+        $responseData = $response->json() ?? [];
+        // Prefer descriptive 'message' field over 'error' field for better error messages
+        $errorMessage = $responseData['message'] ?? $responseData['error'] ?? $responseBody;
+
+        // 401/403 authentication errors (after retry)
+        if ($statusCode === 401 || $statusCode === 403) {
+            throw new ExternalApiAuthenticationException(
+                $endpoint,
+                $statusCode,
+                [
+                    'response_body' => $responseBody,
+                    'error_message' => $errorMessage,
+                ]
+            );
         }
 
-        $response = Http::timeout(30)->withToken($token)->{$method}("{$this->baseUrl}{$endpoint}", $data);
-
-        if ($response->status() === 401) {
-            $this->authenticate();
-            $token = Cache::get('flexxus_token');
-            $response = Http::timeout(30)->withToken($token)->{$method}("{$this->baseUrl}{$endpoint}", $data);
+        // 5xx server errors
+        if ($statusCode >= 500 && $statusCode <= 599) {
+            throw new ExternalApiServerErrorException(
+                $endpoint,
+                $statusCode,
+                [
+                    'response_body' => $responseBody,
+                    'error_message' => $errorMessage,
+                ]
+            );
         }
 
-        if (! $response->successful()) {
-            throw new \RuntimeException('Flexxus request failed: '.$response->body());
-        }
-
-        return $response->json() ?? [];
+        // 4xx client errors (400, 404, 422, etc.)
+        throw new ExternalApiRequestException(
+            $endpoint,
+            $statusCode,
+            $errorMessage,
+            [
+                'response_body' => $responseBody,
+                'error_details' => $responseData,
+            ]
+        );
     }
 }

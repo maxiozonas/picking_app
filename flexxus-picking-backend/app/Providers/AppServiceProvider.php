@@ -43,6 +43,21 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Picking\PickingServiceInterface::class,
             \App\Services\Picking\PickingService::class
         );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\AlertServiceInterface::class,
+            \App\Services\Picking\AlertService::class
+        );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\StockValidationServiceInterface::class,
+            \App\Services\Picking\StockValidationService::class
+        );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\StockCacheServiceInterface::class,
+            \App\Services\Picking\StockCacheService::class
+        );
     }
 
     /**

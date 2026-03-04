@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\WarehouseController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PickingController;
+use App\Http\Controllers\Api\PickingStockController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -41,4 +42,8 @@ Route::middleware('auth:sanctum')->prefix('picking')->group(function () {
     Route::post('/orders/{order_number}/alerts', [PickingController::class, 'createAlert']);
     Route::get('/alerts', [PickingController::class, 'alerts']);
     Route::patch('/alerts/{id}/resolve', [PickingController::class, 'resolveAlert']);
+
+    // Stock validation endpoints
+    Route::get('/orders/{order_number}/stock/{product_code}', [PickingStockController::class, 'getStockForItem']);
+    Route::get('/orders/{order_number}/stock-validations', [PickingStockController::class, 'getValidationStatus']);
 });

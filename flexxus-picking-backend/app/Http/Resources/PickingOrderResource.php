@@ -25,6 +25,9 @@ class PickingOrderResource extends JsonResource
             ],
             'total' => $this->resource['total'] ?? 0,
             'delivery_type' => $this->resource['delivery_type'] ?? null,
+            'stock_validations' => $this->whenLoaded('stockValidations', fn () => PickingStockValidationResource::collection(
+                $this->resource['stock_validations'] ?? []
+            )),
         ];
     }
 }

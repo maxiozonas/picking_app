@@ -47,4 +47,9 @@ interface PickingServiceInterface
      * Resolve an alert
      */
     public function resolveAlert(int $alertId, int $resolverId, string $notes): PickingAlert;
+
+    /**
+     * Get stock information for a specific item in an order
+     */
+    public function getStockForItem(string $orderNumber, string $productCode, int $userId): ?array;
 }

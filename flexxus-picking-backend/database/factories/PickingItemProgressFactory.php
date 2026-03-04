@@ -12,10 +12,14 @@ class PickingItemProgressFactory extends Factory
     {
         $order = \App\Models\PickingOrderProgress::factory()->create();
 
+        $productCode = 'PROD-'.$this->faker->unique()->numerify('######');
+
         return [
             'order_number' => $order->order_number,
-            'product_code' => 'PROD-'.$this->faker->unique()->numerify('######'),
+            'product_code' => $productCode,
+            'item_code' => $productCode, // Alias for product_code
             'quantity_required' => $this->faker->numberBetween(1, 50),
+            'quantity_requested' => null, // Will use quantity_required as fallback
             'quantity_picked' => 0,
             'status' => 'pending',
             'issue_type' => null,

@@ -21,6 +21,9 @@ class PickingItemProgress extends Model
         'issue_type',
         'issue_notes',
         'completed_at',
+        'picking_order_progress_id',
+        'item_code',
+        'quantity_requested',
     ];
 
     protected $casts = [
@@ -34,11 +37,15 @@ class PickingItemProgress extends Model
 
     public function getQuantityRemainingAttribute(): int
     {
-        return $this->quantity_required - $this->quantity_picked;
+        $requested = $this->quantity_requested ?? $this->quantity_required;
+
+        return $requested - $this->quantity_picked;
     }
 
     public function getIsCompletedAttribute(): bool
     {
-        return $this->quantity_picked >= $this->quantity_required;
+        $requested = $this->quantity_requested ?? $this->quantity_required;
+
+        return $this->quantity_picked >= $requested;
     }
 }

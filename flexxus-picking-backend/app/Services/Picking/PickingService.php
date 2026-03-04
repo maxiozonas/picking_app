@@ -2,18 +2,34 @@
 
 namespace App\Services\Picking;
 
+use App\Exceptions\Picking\InsufficientStockException;
+use App\Exceptions\Picking\InvalidOrderStateException;
+use App\Exceptions\Picking\OrderNotFoundException;
+use App\Exceptions\Picking\UnauthorizedOperationException;
+use App\Exceptions\Picking\WarehouseMismatchException;
 use App\Models\PickingAlert;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
+use App\Services\Picking\Interfaces\StockCacheServiceInterface;
+use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class PickingService implements PickingServiceInterface
 {
     private FlexxusPickingService $flexxusService;
 
-    public function __construct(FlexxusPickingService $flexxusService)
-    {
+    private StockValidationServiceInterface $stockValidationService;
+
+    private StockCacheServiceInterface $stockCacheService;
+
+    public function __construct(
+        FlexxusPickingService $flexxusService,
+        StockValidationServiceInterface $stockValidationService,
+        StockCacheServiceInterface $stockCacheService
+    ) {
         $this->flexxusService = $flexxusService;
+        $this->stockValidationService = $stockValidationService;
+        $this->stockCacheService = $stockCacheService;
     }
 
     public function getAvailableOrders(int $userId, array $filters = []): LengthAwarePaginator
@@ -22,7 +38,7 @@ class PickingService implements PickingServiceInterface
         $warehouse = $user->warehouse;
 
         if (! $warehouse) {
-            throw new \Exception('User does not have a warehouse assigned');
+            throw new WarehouseMismatchException('', $userId, 0, ['user_id' => $userId, 'reason' => 'User does not have a warehouse assigned']);
         }
 
         $today = now()->format('Y-m-d');
@@ -94,7 +110,7 @@ class PickingService implements PickingServiceInterface
         $flexxusOrder = $this->flexxusService->getOrderDetail($orderNumber);
 
         if (! $flexxusOrder) {
-            throw new \Exception("Order {$orderNumber} not found in Flexxus");
+            throw new OrderNotFoundException($orderNumber, ['source' => 'Flexxus']);
         }
 
         $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
@@ -164,7 +180,12 @@ class PickingService implements PickingServiceInterface
         });
 
         if (! $exists) {
-            throw new \Exception("Order {$orderNumber} not found or not accessible");
+            throw new OrderNotFoundException($orderNumber, ['source' => 'Flexxus', 'accessible' => false]);
+        }
+
+        $existingProgress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        if ($existingProgress) {
+            throw new InvalidOrderStateException($orderNumber, $existingProgress->status, 'start', ['existing_user_id' => $existingProgress->user_id]);
         }
 
         $progress = PickingOrderProgress::create([
@@ -187,6 +208,9 @@ class PickingService implements PickingServiceInterface
             ]);
         }
 
+        // Pre-fetch stock for all items in the order
+        $this->stockCacheService->prefetchStockForOrder($progress);
+
         return $progress->load('items');
     }
 
@@ -195,23 +219,50 @@ class PickingService implements PickingServiceInterface
         $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
 
         if (! $progress) {
-            throw new \Exception("Order {$orderNumber} not found");
+            throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
         }
 
         if ($progress->user_id !== $userId) {
-            throw new \Exception("You don't have permission to modify this order");
+            throw new UnauthorizedOperationException('pick items', 'Order belongs to a different user', [
+                'order_number' => $orderNumber,
+                'current_user_id' => $userId,
+                'owner_user_id' => $progress->user_id,
+            ]);
+        }
+
+        if ($progress->status === 'completed') {
+            throw new InvalidOrderStateException($orderNumber, $progress->status, 'pick items', [
+                'reason' => 'Cannot pick items from a completed order',
+            ]);
         }
 
         $item = $progress->items()->where('product_code', $productCode)->first();
 
         if (! $item) {
-            throw new \Exception("Item {$productCode} not found in order");
+            throw new OrderNotFoundException($productCode, [
+                'order_number' => $orderNumber,
+                'source' => 'local database',
+                'type' => 'item',
+            ]);
         }
+
+        // Validate stock before updating picked quantity
+        $user = User::findOrFail($userId);
+        $this->stockValidationService->validateStockForPick(
+            $orderNumber,
+            $productCode,
+            $quantity,
+            $user
+        );
 
         $newQuantity = $item->quantity_picked + $quantity;
 
         if ($newQuantity > $item->quantity_required) {
-            throw new \Exception('Cannot pick more than required quantity');
+            throw new InsufficientStockException($orderNumber, $productCode, $quantity, $item->quantity_required - $item->quantity_picked, [
+                'current_picked' => $item->quantity_picked,
+                'requested' => $quantity,
+                'required' => $item->quantity_required,
+            ]);
         }
 
         $item->quantity_picked = $newQuantity;
@@ -225,12 +276,21 @@ class PickingService implements PickingServiceInterface
 
         $item->save();
 
+        // Get latest validation for response
+        $latestValidation = $this->stockValidationService->getLatestValidation($orderNumber, $productCode);
+
         $result = [
             'product_code' => $item->product_code,
             'quantity_required' => $item->quantity_required,
             'quantity_picked' => $item->quantity_picked,
             'status' => $item->status,
             'remaining' => $item->quantity_remaining,
+            'stock_validation' => $latestValidation ? [
+                'validated' => $latestValidation->validation_result === 'passed',
+                'available_qty' => $latestValidation->available_qty,
+                'validated_at' => $latestValidation->validated_at->toIso8601String(),
+                'error_code' => $latestValidation->error_code,
+            ] : null,
         ];
 
         if ($item->status === 'completed') {
@@ -253,11 +313,21 @@ class PickingService implements PickingServiceInterface
         $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
 
         if (! $progress) {
-            throw new \Exception("Order {$orderNumber} not found");
+            throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
         }
 
         if ($progress->user_id !== $userId) {
-            throw new \Exception("You don't have permission to modify this order");
+            throw new UnauthorizedOperationException('complete order', 'Order belongs to a different user', [
+                'order_number' => $orderNumber,
+                'current_user_id' => $userId,
+                'owner_user_id' => $progress->user_id,
+            ]);
+        }
+
+        if ($progress->status === 'completed') {
+            throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
+                'reason' => 'Order is already completed',
+            ]);
         }
 
         $incompleteItems = $progress->items()->where('status', '!=', 'completed')->get();
@@ -268,7 +338,10 @@ class PickingService implements PickingServiceInterface
                 'pending' => $i->quantity_remaining,
             ])->toArray();
 
-            throw new \Exception('Cannot complete order with incomplete items. Missing: ' . implode(', ', array_column($missingItems, 'product_code')));
+            throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
+                'reason' => 'Cannot complete order with incomplete items',
+                'missing_items' => $missingItems,
+            ]);
         }
 
         $progress->status = 'completed';
@@ -332,5 +405,35 @@ class PickingService implements PickingServiceInterface
         $alert->save();
 
         return $alert->load(['warehouse', 'reporter', 'resolver']);
+    }
+
+    public function getStockForItem(string $orderNumber, string $productCode, int $userId): ?array
+    {
+        $user = User::with('warehouse')->findOrFail($userId);
+
+        if (! $user->warehouse) {
+            return null;
+        }
+
+        $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+
+        if (! $progress) {
+            return null;
+        }
+
+        $item = $progress->items()->where('product_code', $productCode)->first();
+
+        if (! $item) {
+            return null;
+        }
+
+        $stockInfo = $this->flexxusService->getProductStock($productCode, $user->warehouse->name);
+
+        return [
+            'item_code' => $productCode,
+            'available_quantity' => $stockInfo['available_quantity'] ?? 0,
+            'location' => $stockInfo['location'] ?? null,
+            'last_updated' => now()->toIso8601String(),
+        ];
     }
 }

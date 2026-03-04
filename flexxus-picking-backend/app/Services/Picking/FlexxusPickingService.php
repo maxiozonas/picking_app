@@ -69,7 +69,7 @@ class FlexxusPickingService
     {
         $cacheKey = "flexxus_stock_{$productCode}_{$warehouseCode}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($productCode, $warehouseCode) {
+        return Cache::remember($cacheKey, now()->addSeconds(45), function () use ($productCode, $warehouseCode) {
             $response = $this->flexxus->request('GET', "/v2/products/{$productCode}/stock");
             $stockArray = $response['Product_Stock'] ?? [];
 

@@ -9,7 +9,6 @@ use App\Http\Requests\Picking\PickItemRequest;
 use App\Http\Requests\Picking\StartOrderRequest;
 use App\Http\Resources\PickingAlertResource;
 use App\Http\Resources\PickingOrderDetailResource;
-use App\Http\Resources\PickingOrderCollection;
 use App\Http\Resources\PickingOrderResource;
 use App\Services\Picking\PickingServiceInterface;
 use Illuminate\Http\JsonResponse;
