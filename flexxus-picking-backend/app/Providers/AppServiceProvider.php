@@ -58,6 +58,21 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Picking\Interfaces\StockCacheServiceInterface::class,
             \App\Services\Picking\StockCacheService::class
         );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\FlexxusClientFactoryInterface::class,
+            \App\Services\Picking\FlexxusClientFactory::class
+        );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface::class,
+            \App\Services\Picking\WarehouseExecutionContextResolver::class
+        );
+
+        $this->app->bind(
+            \App\Services\Admin\WarehouseServiceInterface::class,
+            \App\Services\Admin\WarehouseService::class
+        );
     }
 
     /**
