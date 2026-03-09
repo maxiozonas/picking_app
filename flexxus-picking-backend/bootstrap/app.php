@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+            'role.admin' => \App\Http\Middleware\RequireAdminRole::class,
+            'warehouse.override' => \App\Http\Middleware\WarehouseOverrideMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -20,12 +20,62 @@ class FlexxusClient implements FlexxusClientInterface
 
     private array $deviceInfo;
 
-    public function __construct()
+    private ?string $cacheKeySuffix;
+
+    public function __construct(
+        ?string $baseUrl = null,
+        ?string $username = null,
+        ?string $password = null,
+        ?array $deviceInfo = null,
+        ?string $cacheKeySuffix = null
+    ) {
+        // Use provided parameters or fall back to config (backward compatibility)
+        $this->baseUrl = $baseUrl ?? config('flexxus.url');
+        $this->username = $username ?? config('flexxus.username');
+        $this->password = $password ?? config('flexxus.password');
+        $this->deviceInfo = $deviceInfo ?? config('flexxus.device_info');
+        $this->cacheKeySuffix = $cacheKeySuffix;
+    }
+
+    /**
+     * Get cache key suffix for token scoping.
+     * Returns empty string for backward compatibility when using config credentials.
+     */
+    private function getCacheKeySuffix(): string
     {
-        $this->baseUrl = config('flexxus.url');
-        $this->username = config('flexxus.username');
-        $this->password = config('flexxus.password');
-        $this->deviceInfo = config('flexxus.device_info');
+        if ($this->cacheKeySuffix) {
+            return $this->cacheKeySuffix;
+        }
+
+        // If using config-based credentials (backward compatibility), use empty suffix
+        // This keeps the old cache key names: 'flexxus_token' and 'flexxus_refresh_token'
+        if ($this->baseUrl === config('flexxus.url') &&
+            $this->username === config('flexxus.username')) {
+            return '';
+        }
+
+        // Otherwise, generate suffix from base URL for warehouse-specific clients
+        return substr(md5($this->baseUrl), 0, 8);
+    }
+
+    /**
+     * Get the full cache key for tokens.
+     */
+    private function getTokenCacheKey(): string
+    {
+        $suffix = $this->getCacheKeySuffix();
+
+        return $suffix ? "flexxus_token_{$suffix}" : 'flexxus_token';
+    }
+
+    /**
+     * Get the full cache key for refresh tokens.
+     */
+    private function getRefreshTokenCacheKey(): string
+    {
+        $suffix = $this->getCacheKeySuffix();
+
+        return $suffix ? "flexxus_refresh_token_{$suffix}" : 'flexxus_refresh_token';
     }
 
     public function authenticate(): array
@@ -88,8 +138,9 @@ class FlexxusClient implements FlexxusClientInterface
         $tokenExpireIn = max(60, $tokenExpireIn);
         $refreshExpireIn = max(60, $refreshExpireIn);
 
-        Cache::put('flexxus_token', $data['token'], now()->addSeconds($tokenExpireIn));
-        Cache::put('flexxus_refresh_token', $data['refreshToken'] ?? null, now()->addSeconds($refreshExpireIn));
+        // Use warehouse-scoped cache keys
+        Cache::put($this->getTokenCacheKey(), $data['token'], now()->addSeconds($tokenExpireIn));
+        Cache::put($this->getRefreshTokenCacheKey(), $data['refreshToken'] ?? null, now()->addSeconds($refreshExpireIn));
 
         return $data;
     }
@@ -106,18 +157,18 @@ class FlexxusClient implements FlexxusClientInterface
         $fullUrl = "{$this->baseUrl}{$endpoint}";
 
         try {
-            $token = Cache::get('flexxus_token');
+            $token = Cache::get($this->getTokenCacheKey());
 
             if (! $token) {
                 $this->authenticate();
-                $token = Cache::get('flexxus_token');
+                $token = Cache::get($this->getTokenCacheKey());
             }
 
             $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
 
             if ($response->status() === 401) {
                 $this->authenticate();
-                $token = Cache::get('flexxus_token');
+                $token = Cache::get($this->getTokenCacheKey());
                 $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
             }
 
