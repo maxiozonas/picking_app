@@ -1,3 +1,5 @@
-// Hooks index
-export * from "./use-stats"
-export * from "./use-orders"
+export * from './use-stats'
+export * from './use-orders'
+export * from './use-auth'
+export * from './use-toast'
+

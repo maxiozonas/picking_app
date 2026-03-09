@@ -1,5 +1,5 @@
-import { Bell, User, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, User, LogOut } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,15 +7,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { useAuth } from '@/hooks/use-auth'
+import { useAuthStore } from '@/stores/auth-store'
 
-interface HeaderProps {
-  userName?: string;
-  onLogout?: () => void;
-}
+export function Header() {
+  const { logout } = useAuth()
+  const user = useAuthStore((state) => state.user)
+  const userName = user?.name || 'Admin'
 
-export function Header({ userName = "Admin", onLogout }: HeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-4">
       <div className="flex items-center gap-4">
@@ -42,7 +43,7 @@ export function Header({ userName = "Admin", onLogout }: HeaderProps) {
               <span>Perfil</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-destructive">
+            <DropdownMenuItem onClick={logout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Cerrar Sesión</span>
             </DropdownMenuItem>
@@ -50,5 +51,5 @@ export function Header({ userName = "Admin", onLogout }: HeaderProps) {
         </DropdownMenu>
       </div>
     </header>
-  );
+  )
 }

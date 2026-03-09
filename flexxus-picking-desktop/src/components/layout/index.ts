@@ -1,3 +1,3 @@
-// Layout components placeholder
-export * from "./Sidebar"
-export * from "./Header"
+export * from './Sidebar'
+export * from './Header'
+export { MainLayout } from './MainLayout'

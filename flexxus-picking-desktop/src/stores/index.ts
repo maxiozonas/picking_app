@@ -1,2 +1,2 @@
 // Stores index
-export * from "./auth-store"
+export * from './auth-store'
