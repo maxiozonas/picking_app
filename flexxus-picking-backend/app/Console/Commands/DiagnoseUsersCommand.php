@@ -8,13 +8,12 @@
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 
 echo "=== DIAGNÓSTICO DE USUARIOS Y WAREHOUSES ===\n\n";
 
 // 1. Verificar warehouses
 echo "📦 WAREHOUSES EN BASE DE DATOS:\n";
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50)."\n";
 
 $warehouses = Warehouse::all();
 
@@ -25,7 +24,7 @@ if ($warehouses->isEmpty()) {
     foreach ($warehouses as $wh) {
         $hasCreds = $wh->hasCompleteFlexxusCredentials();
         echo "✓ ID: {$wh->id} | Código: {$wh->code} | Nombre: {$wh->name}\n";
-        echo "  Credenciales Flexxus: " . ($hasCreds ? "SÍ ✓" : "NO ❌") . "\n";
+        echo '  Credenciales Flexxus: '.($hasCreds ? 'SÍ ✓' : 'NO ❌')."\n";
         if ($hasCreds) {
             echo "  Usuario Flexxus: CONFIGURADO\n";
         } else {
@@ -37,7 +36,7 @@ if ($warehouses->isEmpty()) {
 
 // 2. Verificar usuarios
 echo "\n👥 USUARIOS EN BASE DE DATOS:\n";
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50)."\n";
 
 $users = User::with('warehouse')->get();
 
@@ -50,26 +49,26 @@ if ($users->isEmpty()) {
         $warehouseName = $user->warehouse ? $user->warehouse->name : 'N/A';
         echo "✓ ID: {$user->id} | Username: {$user->username} | Rol: {$user->role}\n";
         echo "  Warehouse: {$warehouseCode} ({$warehouseName})\n";
-        echo "  Activo: " . ($user->is_active ? 'SÍ ✓' : 'NO ❌') . "\n";
+        echo '  Activo: '.($user->is_active ? 'SÍ ✓' : 'NO ❌')."\n";
         echo "  Email: {$user->email}\n";
-        echo "  Password Verificado: " . ($user->password === Hash::make('password') ? 'NO (ya hasheado)' : 'SÍ (es password)') . "\n";
+        echo '  Password Verificado: '.($user->password === Hash::make('password') ? 'NO (ya hasheado)' : 'SÍ (es password)')."\n";
         echo "\n";
     }
 }
 
 // 3. Verificar roles
 echo "\n🔐 ROLES Y PERMISOS:\n";
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50)."\n";
 
 $roles = \Spatie\Permission\Models\Role::all()->pluck('name');
-echo "Roles: " . $roles->implode(', ') . "\n";
+echo 'Roles: '.$roles->implode(', ')."\n";
 
 $permissions = \Spatie\Permission\Models\Permission::all()->pluck('name');
-echo "Permisos: " . $permissions->implode(', ') . "\n";
+echo 'Permisos: '.$permissions->implode(', ')."\n";
 
 // 4. Verificar credenciales específicas
 echo "\n🔑 CREDENCIALES FLEXXUS CONFIGURADAS:\n";
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50)."\n";
 
 $warehousesWithCreds = Warehouse::whereNotNull('flexxus_username')
     ->whereNotNull('flexxus_password')
@@ -89,7 +88,7 @@ if ($warehousesWithCreds->isEmpty()) {
 
 // 5. Usuarios de prueba esperados
 echo "\n🎯 USUARIOS DE PRUEBA ESPERADOS:\n";
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50)."\n";
 
 $expectedUsers = [
     'admin',
@@ -108,6 +107,6 @@ foreach ($expectedUsers as $username) {
     }
 }
 
-echo "\n" . str_repeat('=', 50) . "\n";
+echo "\n".str_repeat('=', 50)."\n";
 echo "FIN DEL DIAGNÓSTICO\n";
-echo str_repeat('=', 50) . "\n";
+echo str_repeat('=', 50)."\n";

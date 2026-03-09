@@ -145,7 +145,7 @@ class FlexxusPickingService
         // If we have a previous response, try to get article ID from it
         if ($previousResponse && isset($previousResponse['data'][0]['ID_ARTICULO'])) {
             $articleId = $previousResponse['data'][0]['ID_ARTICULO'];
-            
+
             // Only try if article ID is different from original code
             if ((string) $articleId !== $originalProductCode) {
                 $productResponse = $this->safeRequest($client, 'GET', "/v2/products/{$articleId}", [
@@ -156,6 +156,7 @@ class FlexxusPickingService
                 }
             }
         }
+
         return null;
     }
 
