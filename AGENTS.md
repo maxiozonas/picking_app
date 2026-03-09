@@ -1139,6 +1139,257 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 ---
 
+## 🖥️ Desktop Application (Admin)
+
+### Project Structure
+
+```
+flexxus-picking-desktop/
+├── src/
+│   ├── components/          # React components
+│   │   ├── ui/             # shadcn/ui components
+│   │   ├── layout/         # Layout components (Sidebar, Header)
+│   │   ├── dashboard/      # Dashboard-specific components
+│   │   ├── orders/         # Orders-related components
+│   │   └── auth/           # Authentication components
+│   ├── pages/              # Page components
+│   ├── hooks/              # Custom React hooks
+│   ├── stores/             # Zustand stores
+│   ├── lib/                # Utilities (API client, utils)
+│   ├── types/              # TypeScript type definitions
+│   └── test/               # Test files
+├── public/                 # Static assets
+└── dist/                   # Production build output
+```
+
+### Available Scripts
+
+```bash
+# Development
+pnpm dev              # Start dev server (Vite)
+pnpm build            # Build for production
+pnpm preview          # Preview production build
+
+# Testing
+pnpm test             # Run tests with Vitest
+pnpm test:ui          # Run tests with UI
+pnpm test:coverage    # Generate coverage report
+
+# Code Quality
+pnpm lint             # Run ESLint
+pnpm lint:fix         # Fix ESLint issues
+pnpm format           # Format code with Prettier
+pnpm format:check     # Check formatting
+```
+
+### Environment Variables
+
+Create a `.env` file in `flexxus-picking-desktop/`:
+
+```env
+# API Configuration
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_APP_NAME=Flexxus Picking Desktop
+VITE_APP_VERSION=1.0.0
+```
+
+### Development Workflow
+
+#### 1. Setup Development Environment
+
+```bash
+# Navigate to desktop app directory
+cd flexxus-picking-desktop
+
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+```
+
+The dev server will start at `http://localhost:5173`
+
+#### 2. Testing
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test --watch
+
+# Run tests with UI
+pnpm test:ui
+
+# Generate coverage report
+pnpm test:coverage
+```
+
+#### 3. Building for Production
+
+```bash
+# Build production bundle
+pnpm build
+
+# Preview production build locally
+pnpm preview
+```
+
+The production build will be in the `dist/` directory.
+
+#### 4. Code Quality
+
+```bash
+# Check code style
+pnpm lint
+
+# Fix code style issues automatically
+pnpm lint:fix
+
+# Format code
+pnpm format
+
+# Check formatting
+pnpm format:check
+```
+
+### Architecture
+
+#### Frontend Stack
+
+- **Framework:** React 19 with TypeScript
+- **Build Tool:** Vite 6
+- **State Management:**
+  - TanStack Query (React Query) for server state
+  - Zustand for client state
+- **Routing:** React Router v7
+- **UI Library:** shadcn/ui with Tailwind CSS
+- **HTTP Client:** Axios with interceptors
+- **Testing:** Vitest + React Testing Library + MSW
+
+#### Key Features
+
+1. **Dashboard**
+   - Real-time statistics with 30-second polling
+   - Warehouse filtering
+   - Date range selection
+   - Visual stat cards with trends
+
+2. **Orders Management**
+   - Paginated orders list (15 per page default)
+   - Advanced filtering (warehouse, status, search)
+   - Debounced search (300ms)
+   - Real-time updates
+
+3. **Order Detail**
+   - Complete order information
+   - Items with pick status
+   - Alerts with severity highlighting
+   - Employee assignment info
+
+4. **Authentication**
+   - Token-based auth with Sanctum
+   - Protected routes
+   - Auto-logout on 401
+   - Persistent sessions
+
+### API Integration
+
+The desktop app connects to the Laravel backend via these API endpoints:
+
+```typescript
+// Authentication
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+
+// Dashboard Stats (NEW)
+GET /api/admin/dashboard/stats
+
+// Orders Management (NEW)
+GET /api/admin/orders
+GET /api/admin/orders/{order_number}
+
+// Warehouses
+GET /api/admin/warehouses
+```
+
+### Testing Strategy
+
+#### Unit Tests
+
+- **Auth Store:** `src/stores/auth-store.test.ts`
+- **Utilities:** `src/lib/utils.test.ts`
+- **Custom Hooks:** `src/hooks/*.test.ts`
+
+#### Integration Tests
+
+- **API Hooks:** `src/test/integration/api-hooks.test.ts` (with MSW)
+- **Component Tests:** `src/pages/*.test.tsx`
+
+#### E2E Tests
+
+- **User Flows:** `src/test/e2e/user-flows.test.tsx`
+- **Functionality:** `src/test/functionality/*.test.tsx`
+- **Error Handling:** `src/test/error-handling/*.test.tsx`
+
+### Deployment
+
+#### Local Development
+
+```bash
+# Start backend
+cd flexxus-picking-backend
+php artisan serve
+
+# Start frontend (another terminal)
+cd flexxus-picking-desktop
+pnpm dev
+```
+
+#### Production Build
+
+```bash
+# Build frontend
+cd flexxus-picking-desktop
+pnpm build
+
+# Deploy dist/ folder to web server
+```
+
+#### Configuration Notes
+
+- The frontend expects the API at `VITE_API_BASE_URL`
+- CORS must be configured in Laravel backend
+- Token authentication required for all endpoints
+- Admin role required for admin endpoints
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **CORS Errors**
+   - Ensure Laravel backend has CORS configured
+   - Check `VITE_API_BASE_URL` matches backend URL
+
+2. **Authentication Failures**
+   - Verify user has `admin` role
+   - Check Sanctum configuration in Laravel
+   - Ensure token is stored in localStorage
+
+3. **Build Errors**
+   - Run `pnpm install` to ensure dependencies
+   - Check TypeScript errors in build output
+   - Run `pnpm lint` to check for code issues
+
+4. **Test Failures**
+   - Ensure MSW handlers are properly configured
+   - Check test environment variables
+   - Run tests with `--inspect` for debugging
+
+---
+
 ## 📌 Checklist Antes de Commits
 
 - [ ] Tests pasando: `php artisan test`
