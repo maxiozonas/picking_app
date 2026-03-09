@@ -6,13 +6,15 @@ use App\Exceptions\Picking\InsufficientStockException;
 use App\Exceptions\Picking\InvalidOrderStateException;
 use App\Exceptions\Picking\OrderNotFoundException;
 use App\Exceptions\Picking\UnauthorizedOperationException;
-use App\Exceptions\Picking\WarehouseMismatchException;
 use App\Models\PickingAlert;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
+use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class PickingService implements PickingServiceInterface
 {
@@ -22,44 +24,58 @@ class PickingService implements PickingServiceInterface
 
     private StockCacheServiceInterface $stockCacheService;
 
+    private WarehouseExecutionContextResolverInterface $warehouseContextResolver;
+
     public function __construct(
         FlexxusPickingService $flexxusService,
         StockValidationServiceInterface $stockValidationService,
-        StockCacheServiceInterface $stockCacheService
+        StockCacheServiceInterface $stockCacheService,
+        WarehouseExecutionContextResolverInterface $warehouseContextResolver
     ) {
         $this->flexxusService = $flexxusService;
         $this->stockValidationService = $stockValidationService;
         $this->stockCacheService = $stockCacheService;
+        $this->warehouseContextResolver = $warehouseContextResolver;
     }
 
-    public function getAvailableOrders(int $userId, array $filters = []): LengthAwarePaginator
+    private function resolveWarehouseContext(int $userId, array $requestContext = []): WarehouseExecutionContext
     {
-        $user = User::with('warehouse')->findOrFail($userId);
-        $warehouse = $user->warehouse;
+        return $this->warehouseContextResolver->resolveForUserId($userId, $requestContext);
+    }
 
-        if (! $warehouse) {
-            throw new WarehouseMismatchException('', $userId, 0, ['user_id' => $userId, 'reason' => 'User does not have a warehouse assigned']);
-        }
+    private function resolveWarehouseModel(WarehouseExecutionContext $context): Warehouse
+    {
+        return Warehouse::findOrFail($context->warehouseId);
+    }
+
+    public function getAvailableOrders(int $userId, array $filters = [], array $requestContext = []): LengthAwarePaginator
+    {
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $warehouse = $this->resolveWarehouseModel($context);
 
         $today = now()->format('Y-m-d');
 
         $flexxusOrders = $this->flexxusService->getOrdersByDateAndWarehouse(
             $today,
-            $warehouse->name
+            $warehouse
         );
 
-        $orderNumbers = array_map(fn ($o) => 'NP '.$o['NUMEROCOMPROBANTE'], $flexxusOrders);
+        $orderNumbers = array_map(fn ($o) => OrderNumberParser::normalize('NP '.$o['NUMEROCOMPROBANTE']), $flexxusOrders);
         $localProgress = PickingOrderProgress::whereIn('order_number', $orderNumbers)
+            ->where('warehouse_id', $context->warehouseId)
             ->with('user')
             ->get()
             ->keyBy('order_number');
 
         $mergedOrders = collect($flexxusOrders)->map(function ($flexxusOrder) use ($localProgress, $warehouse) {
-            $orderNumber = 'NP '.($flexxusOrder['NUMEROCOMPROBANTE'] ?? '');
+            $rawOrderNumber = 'NP '.($flexxusOrder['NUMEROCOMPROBANTE'] ?? '');
+            $orderNumber = OrderNumberParser::normalize($rawOrderNumber);
+            $parsed = OrderNumberParser::parse($rawOrderNumber);
             $progress = $localProgress->get($orderNumber);
 
             return [
-                'order_number' => $orderNumber,
+                'order_type' => $parsed['order_type'],
+                'order_number' => $parsed['order_number'],
                 'customer' => $flexxusOrder['RAZONSOCIAL'] ?? 'Unknown',
                 'warehouse' => [
                     'id' => $warehouse->id,
@@ -102,18 +118,23 @@ class PickingService implements PickingServiceInterface
         return new LengthAwarePaginator($pagedOrders, $total, $perPage, $page, ['path' => request()->path()]);
     }
 
-    public function getOrderDetail(string $orderNumber, int $userId): array
+    public function getOrderDetail(string $orderNumber, int $userId, array $requestContext = []): array
     {
-        $user = User::with('warehouse')->findOrFail($userId);
-        $warehouse = $user->warehouse;
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $warehouse = $this->resolveWarehouseModel($context);
 
-        $flexxusOrder = $this->flexxusService->getOrderDetail($orderNumber);
+        $parsed = OrderNumberParser::parse($orderNumber);
+        $canonicalOrderNumber = $parsed['canonical_key'];
+
+        $flexxusOrder = $this->flexxusService->getOrderDetail($canonicalOrderNumber, $warehouse);
 
         if (! $flexxusOrder) {
             throw new OrderNotFoundException($orderNumber, ['source' => 'Flexxus']);
         }
 
-        $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+            ->where('warehouse_id', $context->warehouseId)
+            ->first();
         $itemsProgress = $progress ? $progress->items->keyBy('product_code') : collect();
 
         $items = [];
@@ -121,7 +142,7 @@ class PickingService implements PickingServiceInterface
 
         foreach ($flexxusItems as $item) {
             $productCode = $item['CODIGOPARTICULAR'] ?? '';
-            $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse->name);
+            $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse);
             $itemProgress = $itemsProgress->get($productCode);
 
             $formattedItem = $this->flexxusService->formatOrderItem($item, $stockInfo);
@@ -137,16 +158,21 @@ class PickingService implements PickingServiceInterface
             $items[] = $formattedItem;
         }
 
-        $alerts = $progress ? $progress->alerts->map(fn ($a) => [
+        $alerts = $progress ? $progress->alerts()->where('warehouse_id', $context->warehouseId)->get()->map(fn ($a) => [
             'id' => $a->id,
             'type' => $a->alert_type,
             'message' => $a->message,
             'severity' => $a->severity,
         ])->toArray() : [];
 
+        $totalItems = count($items);
+        $pickedItems = collect($items)->filter(fn ($i) => $i['status'] === 'completed')->count();
+        $completedPercentage = $totalItems > 0 ? round(($pickedItems / $totalItems) * 100, 2) : 0;
+
         return [
-            'order_number' => $orderNumber,
-            'customer' => $flexxusOrder['RAZONSOCIAL'] ?? 'Unknown',
+            'order_type' => $parsed['order_type'],
+            'order_number' => $parsed['order_number'],
+            'customer_name' => $flexxusOrder['RAZONSOCIAL'] ?? 'Unknown',
             'warehouse' => [
                 'id' => $warehouse->id,
                 'code' => $warehouse->code,
@@ -160,49 +186,64 @@ class PickingService implements PickingServiceInterface
                 'id' => $progress->user->id,
                 'name' => $progress->user->name,
             ] : null,
+            'total_items' => $totalItems,
+            'picked_items' => $pickedItems,
+            'completed_percentage' => $completedPercentage,
             'items' => $items,
             'alerts' => $alerts,
         ];
     }
 
-    public function startOrder(string $orderNumber, int $userId): PickingOrderProgress
+    public function startOrder(string $orderNumber, int $userId, array $requestContext = []): PickingOrderProgress
     {
-        $user = User::with('warehouse')->findOrFail($userId);
-        $warehouse = $user->warehouse;
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $warehouse = $this->resolveWarehouseModel($context);
+
+        $parsed = OrderNumberParser::parse($orderNumber);
+        $canonicalOrderNumber = $parsed['canonical_key'];
 
         $flexxusOrders = $this->flexxusService->getOrdersByDateAndWarehouse(
             now()->format('Y-m-d'),
-            $warehouse->name
+            $warehouse
         );
 
-        $exists = collect($flexxusOrders)->contains(function ($o) use ($orderNumber) {
-            return 'NP '.$o['NUMEROCOMPROBANTE'] === $orderNumber;
+        $exists = collect($flexxusOrders)->contains(function ($o) use ($canonicalOrderNumber) {
+            return 'NP '.$o['NUMEROCOMPROBANTE'] === $canonicalOrderNumber;
         });
 
         if (! $exists) {
             throw new OrderNotFoundException($orderNumber, ['source' => 'Flexxus', 'accessible' => false]);
         }
 
-        $existingProgress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        $existingProgress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+            ->where('warehouse_id', $context->warehouseId)
+            ->first();
         if ($existingProgress) {
             throw new InvalidOrderStateException($orderNumber, $existingProgress->status, 'start', ['existing_user_id' => $existingProgress->user_id]);
         }
 
         $progress = PickingOrderProgress::create([
-            'order_number' => $orderNumber,
-            'user_id' => $userId,
-            'warehouse_id' => $warehouse->id,
+            'order_type' => $parsed['order_type'],
+            'order_number' => $canonicalOrderNumber,
+            'user_id' => $context->userId,
+            'warehouse_id' => $context->warehouseId,
             'status' => 'in_progress',
             'started_at' => now(),
         ]);
 
-        $flexxusOrder = $this->flexxusService->getOrderDetail($orderNumber);
+        $flexxusOrder = $this->flexxusService->getOrderDetail($canonicalOrderNumber, $warehouse);
         $flexxusItems = $flexxusOrder['DETALLE'] ?? [];
 
         foreach ($flexxusItems as $item) {
+            $quantityRequired = (int) ($item['PENDIENTE'] ?? $item['CANTIDAD'] ?? 0);
+            $productCode = $item['CODIGOPARTICULAR'] ?? '';
+
             $progress->items()->create([
-                'product_code' => $item['CODIGOPARTICULAR'] ?? '',
-                'quantity_required' => (int) ($item['PENDIENTE'] ?? $item['CANTIDAD'] ?? 0),
+                'order_number' => $canonicalOrderNumber,
+                'product_code' => $productCode,
+                'item_code' => $productCode,
+                'quantity_required' => $quantityRequired,
+                'quantity_requested' => $quantityRequired,
                 'quantity_picked' => 0,
                 'status' => 'pending',
             ]);
@@ -214,158 +255,187 @@ class PickingService implements PickingServiceInterface
         return $progress->load('items');
     }
 
-    public function pickItem(string $orderNumber, string $productCode, int $quantity, int $userId): array
+    public function pickItem(string $orderNumber, string $productCode, int $quantity, int $userId, array $requestContext = []): array
     {
-        $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $user = User::findOrFail($context->userId);
 
-        if (! $progress) {
-            throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
-        }
+        $canonicalOrderNumber = OrderNumberParser::normalize($orderNumber);
 
-        if ($progress->user_id !== $userId) {
-            throw new UnauthorizedOperationException('pick items', 'Order belongs to a different user', [
-                'order_number' => $orderNumber,
-                'current_user_id' => $userId,
-                'owner_user_id' => $progress->user_id,
-            ]);
-        }
-
-        if ($progress->status === 'completed') {
-            throw new InvalidOrderStateException($orderNumber, $progress->status, 'pick items', [
-                'reason' => 'Cannot pick items from a completed order',
-            ]);
-        }
-
-        $item = $progress->items()->where('product_code', $productCode)->first();
-
-        if (! $item) {
-            throw new OrderNotFoundException($productCode, [
-                'order_number' => $orderNumber,
-                'source' => 'local database',
-                'type' => 'item',
-            ]);
-        }
-
-        // Validate stock before updating picked quantity
-        $user = User::findOrFail($userId);
+        // Phase 5: Validate stock OUTSIDE transaction (Flexxus call - avoid holding locks)
         $this->stockValidationService->validateStockForPick(
-            $orderNumber,
+            $canonicalOrderNumber,
             $productCode,
             $quantity,
             $user
         );
 
-        $newQuantity = $item->quantity_picked + $quantity;
+        // Phase 5: Wrap DB updates in transaction for atomicity
+        return DB::transaction(function () use ($canonicalOrderNumber, $productCode, $quantity, $userId, $context, $orderNumber) {
+            $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+                ->where('warehouse_id', $context->warehouseId)
+                ->lockForUpdate()
+                ->first();
 
-        if ($newQuantity > $item->quantity_required) {
-            throw new InsufficientStockException($orderNumber, $productCode, $quantity, $item->quantity_required - $item->quantity_picked, [
-                'current_picked' => $item->quantity_picked,
-                'requested' => $quantity,
-                'required' => $item->quantity_required,
-            ]);
-        }
+            if (! $progress) {
+                throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
+            }
 
-        $item->quantity_picked = $newQuantity;
+            if ($progress->user_id !== $userId) {
+                throw new UnauthorizedOperationException('pick items', 'Order belongs to a different user', [
+                    'order_number' => $orderNumber,
+                    'current_user_id' => $userId,
+                    'owner_user_id' => $progress->user_id,
+                ]);
+            }
 
-        if ($item->quantity_picked >= $item->quantity_required) {
-            $item->status = 'completed';
-            $item->completed_at = now();
-        } else {
-            $item->status = 'in_progress';
-        }
+            if ($progress->status === 'completed') {
+                throw new InvalidOrderStateException($orderNumber, $progress->status, 'pick items', [
+                    'reason' => 'Cannot pick items from a completed order',
+                ]);
+            }
 
-        $item->save();
+            $item = $progress->items()->where('product_code', $productCode)->first();
 
-        // Get latest validation for response
-        $latestValidation = $this->stockValidationService->getLatestValidation($orderNumber, $productCode);
+            if (! $item) {
+                throw new OrderNotFoundException($productCode, [
+                    'order_number' => $orderNumber,
+                    'source' => 'local database',
+                    'type' => 'item',
+                ]);
+            }
 
-        $result = [
-            'product_code' => $item->product_code,
-            'quantity_required' => $item->quantity_required,
-            'quantity_picked' => $item->quantity_picked,
-            'status' => $item->status,
-            'remaining' => $item->quantity_remaining,
-            'stock_validation' => $latestValidation ? [
-                'validated' => $latestValidation->validation_result === 'passed',
-                'available_qty' => $latestValidation->available_qty,
-                'validated_at' => $latestValidation->validated_at->toIso8601String(),
-                'error_code' => $latestValidation->error_code,
-            ] : null,
-        ];
+            $newQuantity = $item->quantity_picked + $quantity;
 
-        if ($item->status === 'completed') {
-            $result['message'] = 'Item completado';
-        }
+            if ($newQuantity > $item->quantity_required) {
+                throw new InsufficientStockException($orderNumber, $productCode, $quantity, $item->quantity_required - $item->quantity_picked, [
+                    'current_picked' => $item->quantity_picked,
+                    'requested' => $quantity,
+                    'required' => $item->quantity_required,
+                ]);
+            }
 
-        $allItems = $progress->items()->get();
-        $allCompleted = $allItems->every(fn ($i) => $i->status === 'completed');
+            $item->quantity_picked = $newQuantity;
 
-        if ($allCompleted) {
-            $result['order_ready_to_complete'] = true;
-            $result['message'] = '¡Todos los items completados! Puedes completar el pedido.';
-        }
+            if ($item->quantity_picked >= $item->quantity_required) {
+                $item->status = 'completed';
+                $item->completed_at = now();
+            } else {
+                $item->status = 'in_progress';
+            }
 
-        return $result;
+            $item->save();
+
+            $latestValidation = $this->stockValidationService->getLatestValidation($orderNumber, $productCode);
+
+            $stockAfterPick = null;
+            if ($latestValidation && $latestValidation->validation_result === 'passed') {
+                $stockAfterPick = $latestValidation->available_qty - $item->quantity_picked;
+            }
+
+            $result = [
+                'product_code' => $item->product_code,
+                'quantity_required' => $item->quantity_required,
+                'quantity_picked' => $item->quantity_picked,
+                'status' => $item->status,
+                'remaining' => $item->quantity_remaining,
+                'stock_after_pick' => $stockAfterPick,
+                'stock_validation' => $latestValidation ? [
+                    'validated' => $latestValidation->validation_result === 'passed',
+                    'available_qty' => $latestValidation->available_qty,
+                    'validated_at' => $latestValidation->validated_at->toIso8601String(),
+                    'error_code' => $latestValidation->error_code,
+                ] : null,
+            ];
+
+            if ($item->status === 'completed') {
+                $result['message'] = 'Item completado';
+            }
+
+            $allItems = $progress->items()->get();
+            $allCompleted = $allItems->every(fn ($i) => $i->status === 'completed');
+
+            if ($allCompleted) {
+                $result['order_ready_to_complete'] = true;
+                $result['message'] = '¡Todos los items completados! Puedes completar el pedido.';
+            }
+
+            return $result;
+        });
     }
 
-    public function completeOrder(string $orderNumber, int $userId): PickingOrderProgress
+    public function completeOrder(string $orderNumber, int $userId, array $requestContext = []): PickingOrderProgress
     {
-        $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $canonicalOrderNumber = OrderNumberParser::normalize($orderNumber);
 
-        if (! $progress) {
-            throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
-        }
+        // Phase 5: Wrap DB updates in transaction for atomicity
+        return DB::transaction(function () use ($canonicalOrderNumber, $userId, $context, $orderNumber) {
+            $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+                ->where('warehouse_id', $context->warehouseId)
+                ->lockForUpdate()
+                ->first();
 
-        if ($progress->user_id !== $userId) {
-            throw new UnauthorizedOperationException('complete order', 'Order belongs to a different user', [
-                'order_number' => $orderNumber,
-                'current_user_id' => $userId,
-                'owner_user_id' => $progress->user_id,
-            ]);
-        }
+            if (! $progress) {
+                throw new OrderNotFoundException($orderNumber, ['source' => 'local database']);
+            }
 
-        if ($progress->status === 'completed') {
-            throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
-                'reason' => 'Order is already completed',
-            ]);
-        }
+            if ($progress->user_id !== $userId) {
+                throw new UnauthorizedOperationException('complete order', 'Order belongs to a different user', [
+                    'order_number' => $orderNumber,
+                    'current_user_id' => $userId,
+                    'owner_user_id' => $progress->user_id,
+                ]);
+            }
 
-        $incompleteItems = $progress->items()->where('status', '!=', 'completed')->get();
+            if ($progress->status === 'completed') {
+                throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
+                    'reason' => 'Order is already completed',
+                ]);
+            }
 
-        if ($incompleteItems->count() > 0) {
-            $missingItems = $incompleteItems->map(fn ($i) => [
-                'product_code' => $i->product_code,
-                'pending' => $i->quantity_remaining,
-            ])->toArray();
+            $incompleteItems = $progress->items()->where('status', '!=', 'completed')->get();
 
-            throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
-                'reason' => 'Cannot complete order with incomplete items',
-                'missing_items' => $missingItems,
-            ]);
-        }
+            if ($incompleteItems->count() > 0) {
+                $missingItems = $incompleteItems->map(fn ($i) => [
+                    'product_code' => $i->product_code,
+                    'pending' => $i->quantity_remaining,
+                ])->toArray();
 
-        $progress->status = 'completed';
-        $progress->completed_at = now();
-        $progress->save();
+                throw new InvalidOrderStateException($orderNumber, $progress->status, 'complete', [
+                    'reason' => 'Cannot complete order with incomplete items',
+                    'missing_items' => $missingItems,
+                ]);
+            }
 
-        return $progress->fresh();
+            $progress->status = 'completed';
+            $progress->completed_at = now();
+            $progress->save();
+
+            return $progress->fresh();
+        });
     }
 
-    public function createAlert(array $data, int $userId): PickingAlert
+    public function createAlert(array $data, int $userId, array $requestContext = []): PickingAlert
     {
-        $user = User::findOrFail($userId);
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $user = User::findOrFail($context->userId);
+
+        $canonicalOrderNumber = OrderNumberParser::normalize($data['order_number']);
 
         $alert = PickingAlert::create([
-            'order_number' => $data['order_number'],
-            'warehouse_id' => $user->warehouse_id,
-            'user_id' => $userId,
+            'order_number' => $canonicalOrderNumber,
+            'warehouse_id' => $context->warehouseId,
+            'user_id' => $context->userId,
             'alert_type' => $data['alert_type'],
             'product_code' => $data['product_code'] ?? null,
             'message' => $data['message'],
             'severity' => $data['severity'] ?? 'medium',
         ]);
 
-        $progress = PickingOrderProgress::where('order_number', $data['order_number'])->first();
+        $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+            ->where('warehouse_id', $context->warehouseId)
+            ->first();
 
         if ($progress) {
             $progress->has_stock_issues = true;
@@ -395,7 +465,7 @@ class PickingService implements PickingServiceInterface
         return $query->orderBy('created_at', 'desc')->paginate(15);
     }
 
-    public function resolveAlert(int $alertId, int $resolverId, string $notes): PickingAlert
+    public function resolveAlert(int $alertId, int $resolverId, string $notes, array $requestContext = []): PickingAlert
     {
         $alert = PickingAlert::findOrFail($alertId);
 
@@ -407,15 +477,16 @@ class PickingService implements PickingServiceInterface
         return $alert->load(['warehouse', 'reporter', 'resolver']);
     }
 
-    public function getStockForItem(string $orderNumber, string $productCode, int $userId): ?array
+    public function getStockForItem(string $orderNumber, string $productCode, int $userId, array $requestContext = []): ?array
     {
-        $user = User::with('warehouse')->findOrFail($userId);
+        $context = $this->resolveWarehouseContext($userId, $requestContext);
+        $warehouse = $this->resolveWarehouseModel($context);
 
-        if (! $user->warehouse) {
-            return null;
-        }
+        $canonicalOrderNumber = OrderNumberParser::normalize($orderNumber);
 
-        $progress = PickingOrderProgress::where('order_number', $orderNumber)->first();
+        $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
+            ->where('warehouse_id', $context->warehouseId)
+            ->first();
 
         if (! $progress) {
             return null;
@@ -427,7 +498,7 @@ class PickingService implements PickingServiceInterface
             return null;
         }
 
-        $stockInfo = $this->flexxusService->getProductStock($productCode, $user->warehouse->name);
+        $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse);
 
         return [
             'item_code' => $productCode,

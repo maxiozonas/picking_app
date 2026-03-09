@@ -20,7 +20,7 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware('auth:sanctum', 'role.admin')->prefix('admin')->group(function () {
     // User CRUD
     Route::apiResource('users', UserController::class);
 
@@ -31,9 +31,11 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // Warehouses list
     Route::get('/warehouses', [WarehouseController::class, 'index']);
+    Route::put('/warehouses/{warehouse}/flexxus-credentials', [WarehouseController::class, 'updateFlexxusCredentials']);
+    Route::delete('/warehouses/{warehouse}/flexxus-credentials', [WarehouseController::class, 'clearFlexxusCredentials']);
 });
 
-Route::middleware('auth:sanctum')->prefix('picking')->group(function () {
+Route::middleware(['auth:sanctum', 'warehouse.override'])->prefix('picking')->group(function () {
     Route::get('/orders', [PickingController::class, 'index']);
     Route::get('/orders/{order_number}', [PickingController::class, 'show']);
     Route::post('/orders/{order_number}/start', [PickingController::class, 'start']);

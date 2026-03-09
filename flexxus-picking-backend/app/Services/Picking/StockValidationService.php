@@ -47,7 +47,7 @@ class StockValidationService implements StockValidationServiceInterface
             ->firstOrFail();
 
         $item = PickingItemProgress::where('picking_order_progress_id', $order->id)
-            ->where('item_code', $itemCode)
+            ->where('product_code', $itemCode)
             ->firstOrFail();
 
         // Step 2: Check if already fully picked (before over-pick check)
@@ -110,7 +110,7 @@ class StockValidationService implements StockValidationServiceInterface
         }
 
         // Step 4: Check Flexxus stock
-        $flexxusStock = $this->getFlexxusStock($itemCode, $order->warehouse->code);
+        $flexxusStock = $this->getFlexxusStock($itemCode, $order->warehouse);
         if ($flexxusStock < $requestedQty) {
             // Log validation failure
             Log::channel('picking_validations')->error('validation_failed', [
@@ -234,12 +234,12 @@ class StockValidationService implements StockValidationServiceInterface
      * Get Flexxus stock for an item
      *
      * @param  string  $itemCode  Item code
-     * @param  string  $warehouseCode  Warehouse code
+     * @param  \App\Models\Warehouse  $warehouse  Warehouse model
      * @return int Available stock quantity
      */
-    private function getFlexxusStock(string $itemCode, string $warehouseCode): int
+    private function getFlexxusStock(string $itemCode, \App\Models\Warehouse $warehouse): int
     {
-        $stockInfo = $this->flexxusService->getProductStock($itemCode, $warehouseCode);
+        $stockInfo = $this->flexxusService->getProductStock($itemCode, $warehouse);
 
         if ($stockInfo === null) {
             // If no stock info found, assume 0 available

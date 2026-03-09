@@ -21,24 +21,32 @@ class PickingController extends Controller
         private PickingServiceInterface $pickingService
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $filters = $request->only(['status', 'search']);
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $orders = $this->pickingService->getAvailableOrders(
             auth()->id(),
-            $filters
+            $filters,
+            $requestContext
         );
 
-        return response()->json([
-            'data' => PickingOrderResource::collection($orders)->collection->toArray(request()),
-        ]);
+        return PickingOrderResource::collection($orders);
     }
 
-    public function show(string $orderNumber): PickingOrderDetailResource
+    public function show(string $orderNumber, Request $request): PickingOrderDetailResource
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $order = $this->pickingService->getOrderDetail(
             $orderNumber,
-            auth()->id()
+            auth()->id(),
+            $requestContext
         );
 
         return new PickingOrderDetailResource($order);
@@ -46,9 +54,14 @@ class PickingController extends Controller
 
     public function start(string $orderNumber, StartOrderRequest $request): PickingOrderResource
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $progress = $this->pickingService->startOrder(
             $orderNumber,
-            auth()->id()
+            auth()->id(),
+            $requestContext
         );
 
         return new PickingOrderResource($progress);
@@ -56,11 +69,16 @@ class PickingController extends Controller
 
     public function pickItem(string $orderNumber, string $productCode, PickItemRequest $request): JsonResponse
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $result = $this->pickingService->pickItem(
             $orderNumber,
             $productCode,
             $request->validated('quantity'),
-            auth()->id()
+            auth()->id(),
+            $requestContext
         );
 
         return response()->json([
@@ -70,9 +88,14 @@ class PickingController extends Controller
 
     public function complete(string $orderNumber, CompleteOrderRequest $request): PickingOrderResource
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $progress = $this->pickingService->completeOrder(
             $orderNumber,
-            auth()->id()
+            auth()->id(),
+            $requestContext
         );
 
         return new PickingOrderResource($progress);
@@ -80,11 +103,15 @@ class PickingController extends Controller
 
     public function createAlert(string $orderNumber, CreateAlertRequest $request): JsonResponse
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $data = array_merge($request->validated(), [
             'order_number' => $orderNumber,
         ]);
 
-        $alert = $this->pickingService->createAlert($data, auth()->id());
+        $alert = $this->pickingService->createAlert($data, auth()->id(), $requestContext);
 
         return response()->json([
             'data' => new PickingAlertResource($alert),
@@ -103,10 +130,15 @@ class PickingController extends Controller
     {
         $request->validate(['notes' => 'nullable|string']);
 
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $alert = $this->pickingService->resolveAlert(
             $id,
             auth()->id(),
-            $request->input('notes', '')
+            $request->input('notes', ''),
+            $requestContext
         );
 
         return response()->json([

@@ -40,7 +40,7 @@ class StockCacheService implements StockCacheServiceInterface
             // Fetch stock from Flexxus
             $stockInfo = $this->flexxusService->getProductStock(
                 $item->item_code,
-                $order->warehouse->code
+                $order->warehouse
             );
 
             $availableQty = $stockInfo['total'] ?? 0;

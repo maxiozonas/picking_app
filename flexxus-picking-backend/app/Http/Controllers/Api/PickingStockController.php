@@ -20,10 +20,15 @@ class PickingStockController extends Controller
 
     public function getStockForItem(string $orderNumber, string $productCode, GetStockForItemRequest $request): JsonResponse
     {
+        $requestContext = array_filter([
+            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
+        ], fn ($value) => $value !== null);
+
         $stock = $this->pickingService->getStockForItem(
             $orderNumber,
             $productCode,
-            auth()->id()
+            auth()->id(),
+            $requestContext
         );
 
         if (! $stock) {

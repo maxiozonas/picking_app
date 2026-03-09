@@ -90,6 +90,7 @@ class AuthService implements AuthServiceInterface
     {
         $warehouse = $user->warehouse;
         $isOverride = $user->override_expires_at && $user->override_expires_at->isFuture();
+        $isAdmin = $user->role === 'admin';
 
         $data = [
             'id' => $user->id,
@@ -104,15 +105,18 @@ class AuthService implements AuthServiceInterface
                 'is_active' => $warehouse->is_active,
                 'is_override' => $isOverride,
             ] : null,
-            'can_override_warehouse' => $user->can_override_warehouse,
-            'override_expires_at' => $user->override_expires_at?->toISOString(),
-            'available_warehouses' => $user->availableWarehouses->map(fn ($w) => [
+        ];
+
+        if ($isAdmin) {
+            $data['can_override_warehouse'] = $user->can_override_warehouse;
+            $data['override_expires_at'] = $user->override_expires_at?->toISOString();
+            $data['available_warehouses'] = $user->availableWarehouses->map(fn ($w) => [
                 'id' => $w->id,
                 'code' => $w->code,
                 'name' => $w->name,
                 'is_active' => $w->is_active,
-            ]),
-        ];
+            ]);
+        }
 
         return $data;
     }

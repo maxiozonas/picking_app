@@ -14,6 +14,7 @@ class PickingOrderProgress extends Model
     protected $table = 'picking_orders_progress';
 
     protected $fillable = [
+        'order_type',
         'order_number',
         'user_id',
         'warehouse_id',
@@ -42,7 +43,7 @@ class PickingOrderProgress extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(PickingItemProgress::class, 'order_number', 'order_number');
+        return $this->hasMany(PickingItemProgress::class, 'picking_order_progress_id');
     }
 
     public function alerts(): HasMany

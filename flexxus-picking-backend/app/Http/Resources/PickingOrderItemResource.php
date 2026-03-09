@@ -17,6 +17,7 @@ class PickingOrderItemResource extends JsonResource
             'quantity_required' => $data['quantity_required'] ?? 0,
             'quantity_picked' => $data['quantity_picked'] ?? 0,
             'lot' => $data['lot'] ?? 'SINLOTE',
+            'location' => $data['location'] ?? null,
             'status' => $data['status'] ?? 'pending',
             'stock_info' => $data['stock_info'] ?? null,
         ];
