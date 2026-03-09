@@ -146,6 +146,92 @@ class PickingControllerTest extends TestCase
             ->assertJsonValidationErrors(['quantity']);
     }
 
+    public function test_pick_item_response_includes_validation_info(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $orderNumber = 'ORD-001';
+        $productCode = 'PROD-001';
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user) {
+            $mock->shouldReceive('pickItem')
+                ->once()
+                ->with($orderNumber, $productCode, 5, $user->id)
+                ->andReturn([
+                    'product_code' => $productCode,
+                    'quantity_required' => 10,
+                    'quantity_picked' => 5,
+                    'status' => 'in_progress',
+                    'remaining' => 5,
+                    'stock_validation' => [
+                        'validated' => true,
+                        'available_qty' => 15,
+                        'validated_at' => now()->toIso8601String(),
+                    ],
+                ]);
+        });
+
+        $response = $this->postJson("/api/picking/orders/{$orderNumber}/items/{$productCode}/pick", [
+            'quantity' => 5,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'data' => [
+                    'product_code' => $productCode,
+                    'stock_validation' => [
+                        'validated' => true,
+                        'available_qty' => 15,
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_pick_item_response_includes_stock_after_pick(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $orderNumber = 'ORD-001';
+        $productCode = 'PROD-001';
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user) {
+            $mock->shouldReceive('pickItem')
+                ->once()
+                ->with($orderNumber, $productCode, 5, $user->id)
+                ->andReturn([
+                    'product_code' => $productCode,
+                    'quantity_required' => 10,
+                    'quantity_picked' => 5,
+                    'status' => 'in_progress',
+                    'remaining' => 5,
+                    'stock_after_pick' => 45,
+                    'stock_validation' => [
+                        'validated' => true,
+                        'available_qty' => 50,
+                        'validated_at' => now()->toIso8601String(),
+                    ],
+                ]);
+        });
+
+        $response = $this->postJson("/api/picking/orders/{$orderNumber}/items/{$productCode}/pick", [
+            'quantity' => 5,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'data' => [
+                    'product_code' => $productCode,
+                    'stock_after_pick' => 45,
+                    'stock_validation' => [
+                        'validated' => true,
+                        'available_qty' => 50,
+                    ],
+                ],
+            ]);
+    }
+
     public function test_can_complete_order(): void
     {
         $user = User::factory()->create();
@@ -285,5 +371,209 @@ class PickingControllerTest extends TestCase
     {
         $response = $this->getJson('/api/picking/orders');
         $response->assertStatus(401);
+    }
+
+    public function test_list_detail_start_share_same_contract_envelope(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // List response envelope
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $mock->shouldReceive('getAvailableOrders')
+                ->once()
+                ->with($user->id, [])
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
+                    [
+                        'order_number' => 'NP 623200',
+                        'customer' => 'Test Customer',
+                        'status' => 'pending',
+                    ],
+                ], 1, 15, 1, ['path' => request()->path()]));
+        });
+
+        $listResponse = $this->getJson('/api/picking/orders');
+        $listResponse->assertStatus(200)
+            ->assertJsonStructure([
+                'data',
+            ]);
+
+        // Detail response envelope
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $mock->shouldReceive('getOrderDetail')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn([
+                    'order_number' => 'NP 623200',
+                    'customer_name' => 'Test Customer',
+                ]);
+        });
+
+        $detailResponse = $this->getJson('/api/picking/orders/NP-623200');
+        $detailResponse->assertStatus(200)
+            ->assertJsonStructure([
+                'data',
+            ]);
+
+        // Start response envelope
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $progress = PickingOrderProgress::factory()->make([
+                'order_number' => 'NP 623200',
+                'user_id' => $user->id,
+            ]);
+            $mock->shouldReceive('startOrder')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn($progress);
+        });
+
+        $startResponse = $this->postJson('/api/picking/orders/NP-623200/start');
+        $startResponse->assertStatus(200)
+            ->assertJsonStructure([
+                'data',
+            ]);
+    }
+
+    public function test_list_detail_start_share_core_order_keys(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $coreKeys = [
+            'order_number',
+            'status',
+            'assigned_to',
+            'started_at',
+        ];
+
+        // List response has core keys
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys) {
+            $mock->shouldReceive('getAvailableOrders')
+                ->once()
+                ->with($user->id, [])
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
+                    array_merge([
+                        'order_number' => 'NP 623200',
+                        'customer' => 'Test Customer',
+                        'status' => 'pending',
+                        'assigned_to' => ['id' => null, 'name' => 'Not assigned'],
+                        'started_at' => null,
+                    ], array_fill_keys($coreKeys, null)),
+                ], 1, 15, 1, ['path' => request()->path()]));
+        });
+
+        $listResponse = $this->getJson('/api/picking/orders');
+        $listData = $listResponse->json('data.0');
+        foreach ($coreKeys as $key) {
+            $this->assertArrayHasKey($key, $listData, "List response missing key: {$key}");
+        }
+
+        // Detail response has core keys
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys) {
+            $mock->shouldReceive('getOrderDetail')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn(array_merge([
+                    'order_number' => 'NP 623200',
+                    'customer_name' => 'Test Customer',
+                    'status' => 'pending',
+                    'assigned_to' => ['id' => null, 'name' => 'Not assigned'],
+                    'started_at' => null,
+                ], array_fill_keys($coreKeys, null)));
+        });
+
+        $detailResponse = $this->getJson('/api/picking/orders/NP-623200');
+        $detailData = $detailResponse->json('data');
+        foreach ($coreKeys as $key) {
+            $this->assertArrayHasKey($key, $detailData, "Detail response missing key: {$key}");
+        }
+
+        // Start response has core keys
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $progress = PickingOrderProgress::factory()->make([
+                'order_number' => 'NP 623200',
+                'user_id' => $user->id,
+                'status' => 'in_progress',
+                'started_at' => now(),
+            ]);
+            $mock->shouldReceive('startOrder')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn($progress);
+        });
+
+        $startResponse = $this->postJson('/api/picking/orders/NP-623200/start');
+        $startData = $startResponse->json('data');
+        foreach ($coreKeys as $key) {
+            $this->assertArrayHasKey($key, $startData, "Start response missing key: {$key}");
+        }
+    }
+
+    public function test_list_detail_start_have_consistent_schema_for_order_identifier(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // All responses should have order_type and order_number
+        $identifierKeys = ['order_type', 'order_number'];
+
+        // List response
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $mock->shouldReceive('getAvailableOrders')
+                ->once()
+                ->with($user->id, [])
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
+                    [
+                        'order_type' => 'NP',
+                        'order_number' => '623200',
+                        'customer' => 'Test Customer',
+                    ],
+                ], 1, 15, 1, ['path' => request()->path()]));
+        });
+
+        $listResponse = $this->getJson('/api/picking/orders');
+        $listData = $listResponse->json('data.0');
+        foreach ($identifierKeys as $key) {
+            $this->assertArrayHasKey($key, $listData, "List response missing identifier key: {$key}");
+        }
+
+        // Detail response
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $mock->shouldReceive('getOrderDetail')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn([
+                    'order_type' => 'NP',
+                    'order_number' => '623200',
+                    'customer_name' => 'Test Customer',
+                ]);
+        });
+
+        $detailResponse = $this->getJson('/api/picking/orders/NP-623200');
+        $detailData = $detailResponse->json('data');
+        foreach ($identifierKeys as $key) {
+            $this->assertArrayHasKey($key, $detailData, "Detail response missing identifier key: {$key}");
+        }
+
+        // Start response
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+            $progress = PickingOrderProgress::factory()->make([
+                'order_number' => 'NP 623200',
+                'user_id' => $user->id,
+            ]);
+            $progress->order_type = 'NP';
+            $progress->order_number = '623200';
+
+            $mock->shouldReceive('startOrder')
+                ->once()
+                ->with('NP-623200', $user->id)
+                ->andReturn($progress);
+        });
+
+        $startResponse = $this->postJson('/api/picking/orders/NP-623200/start');
+        $startData = $startResponse->json('data');
+        foreach ($identifierKeys as $key) {
+            $this->assertArrayHasKey($key, $startData, "Start response missing identifier key: {$key}");
+        }
     }
 }

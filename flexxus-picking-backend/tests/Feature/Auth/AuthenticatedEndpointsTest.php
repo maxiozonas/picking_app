@@ -11,6 +11,14 @@ class AuthenticatedEndpointsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Create roles directly without seeder to avoid nested transactions
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'empleado']);
+    }
+
     public function test_authenticated_user_can_get_their_profile(): void
     {
         $user = User::factory()->create();
@@ -76,7 +84,7 @@ class AuthenticatedEndpointsTest extends TestCase
 
     public function test_me_endpoint_includes_available_warehouses_for_users_with_override(): void
     {
-        $user = User::factory()->withOverride()->create();
+        $user = User::factory()->admin()->withOverride()->create();
         $warehouse2 = $user->warehouse;
         $warehouse1 = \App\Models\Warehouse::factory()->create();
         $warehouse3 = \App\Models\Warehouse::factory()->create();
@@ -155,5 +163,49 @@ class AuthenticatedEndpointsTest extends TestCase
             in_array($response->getStatusCode(), [200, 401]),
             'Response should be either 200 (user re-hydrated) or 401 (token rejected)'
         );
+    }
+
+    public function test_me_endpoint_hides_override_fields_for_empleado_role(): void
+    {
+        $user = User::factory()->empleado()->create([
+            'can_override_warehouse' => true,
+            'override_expires_at' => now()->addHours(2),
+        ]);
+
+        $user->availableWarehouses()->attach(\App\Models\Warehouse::factory()->create()->id);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/auth/me');
+
+        $response->assertStatus(200)
+            ->assertJsonMissingPath('data.user.can_override_warehouse')
+            ->assertJsonMissingPath('data.user.override_expires_at')
+            ->assertJsonMissingPath('data.user.available_warehouses');
+    }
+
+    public function test_me_endpoint_includes_override_fields_for_admin_role(): void
+    {
+        $user = User::factory()->admin()->create([
+            'can_override_warehouse' => true,
+            'override_expires_at' => now()->addHours(2),
+        ]);
+
+        $user->availableWarehouses()->attach(\App\Models\Warehouse::factory()->create()->id);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/auth/me');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => [
+                        'can_override_warehouse',
+                        'override_expires_at',
+                        'available_warehouses',
+                    ],
+                ],
+            ]);
     }
 }

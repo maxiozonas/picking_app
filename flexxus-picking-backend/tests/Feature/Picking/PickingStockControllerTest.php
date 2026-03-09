@@ -25,14 +25,18 @@ class PickingStockControllerTest extends TestCase
         $orderNumber = 'ORD-001';
         $productCode = 'PROD-001';
 
-        // Create a picking order progress record
+        $warehouseId = $user->warehouse_id;
+
+        // Create a picking order progress record with user's warehouse
         $progress = PickingOrderProgress::factory()->create([
             'order_number' => $orderNumber,
             'user_id' => $user->id,
+            'warehouse_id' => $warehouseId,
         ]);
 
         // Create an item progress record
         $progress->items()->create([
+            'order_number' => $orderNumber,
             'product_code' => $productCode,
             'quantity_required' => 10,
             'quantity_picked' => 0,

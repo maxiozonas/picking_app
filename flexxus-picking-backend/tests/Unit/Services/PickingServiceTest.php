@@ -2,13 +2,22 @@
 
 namespace Tests\Unit\Services;
 
+use App\Exceptions\Picking\AlreadyPickedException;
+use App\Exceptions\Picking\InvalidOrderStateException;
+use App\Exceptions\Picking\OrderNotFoundException;
+use App\Exceptions\Picking\OverPickException;
+use App\Exceptions\Picking\PhysicalStockInsufficientException;
+use App\Exceptions\Picking\UnauthorizedOperationException;
+use App\Exceptions\Picking\WarehouseMismatchException;
 use App\Models\PickingAlert;
 use App\Models\PickingItemProgress;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\PickingService;
+use App\Services\Picking\StockValidationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -23,6 +32,12 @@ class PickingServiceTest extends TestCase
 
     private FlexxusPickingService $flexxusService;
 
+    private StockValidationServiceInterface $stockValidationService;
+
+    private \App\Services\Picking\Interfaces\StockCacheServiceInterface $stockCacheService;
+
+    private \App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface $warehouseContextResolver;
+
     private User $user;
 
     private Warehouse $warehouse;
@@ -34,10 +49,29 @@ class PickingServiceTest extends TestCase
         Cache::flush();
 
         $this->flexxusService = Mockery::mock(FlexxusPickingService::class);
-        $this->service = new PickingService($this->flexxusService);
+        $this->stockValidationService = Mockery::mock(StockValidationServiceInterface::class);
+        $this->stockCacheService = Mockery::mock(\App\Services\Picking\Interfaces\StockCacheServiceInterface::class);
+        $this->warehouseContextResolver = Mockery::mock(\App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface::class);
+        $this->service = new PickingService(
+            $this->flexxusService,
+            $this->stockValidationService,
+            $this->stockCacheService,
+            $this->warehouseContextResolver
+        );
 
         $this->warehouse = Warehouse::factory()->create(['code' => 'WH01', 'name' => 'WH01']);
         $this->user = User::factory()->create(['warehouse_id' => $this->warehouse->id]);
+
+        $context = new \App\Services\Picking\WarehouseExecutionContext(
+            $this->warehouse->id,
+            $this->warehouse->code,
+            $this->user->id
+        );
+
+        $this->warehouseContextResolver
+            ->shouldReceive('resolveForUserId')
+            ->with($this->user->id)
+            ->andReturn($context);
     }
 
     public function test_get_available_orders_merges_flexxus_data_with_local_progress()
@@ -60,7 +94,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -78,14 +114,16 @@ class PickingServiceTest extends TestCase
         $this->assertCount(2, $result->items());
 
         $firstOrder = $result->items()[0];
-        $this->assertEquals('NP 12345', $firstOrder['order_number']);
+        $this->assertEquals('12345', $firstOrder['order_number']);
+        $this->assertEquals('NP', $firstOrder['order_type']);
         $this->assertEquals('Customer 1', $firstOrder['customer']);
         $this->assertEquals('in_progress', $firstOrder['status']);
         $this->assertEquals('WH01', $firstOrder['warehouse']['code']);
         $this->assertNotNull($firstOrder['started_at']);
 
         $secondOrder = $result->items()[1];
-        $this->assertEquals('NP 67890', $secondOrder['order_number']);
+        $this->assertEquals('67890', $secondOrder['order_number']);
+        $this->assertEquals('NP', $secondOrder['order_type']);
         $this->assertEquals('pending', $secondOrder['status']);
         $this->assertNull($secondOrder['started_at']);
     }
@@ -104,7 +142,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -131,7 +171,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -176,7 +218,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -216,7 +260,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -250,7 +296,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -278,15 +326,22 @@ class PickingServiceTest extends TestCase
     {
         $userWithoutWarehouse = User::factory()->create(['warehouse_id' => null]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('User does not have a warehouse assigned');
+        $this->warehouseContextResolver
+            ->shouldReceive('resolveForUserId')
+            ->with($userWithoutWarehouse->id)
+            ->andThrow(new WarehouseMismatchException('', $userWithoutWarehouse->id, 0, [
+                'reason' => 'User does not have a warehouse assigned',
+            ]));
+
+        $this->expectException(WarehouseMismatchException::class);
+        $this->expectExceptionMessage('warehouse mismatch');
 
         $this->service->getAvailableOrders($userWithoutWarehouse->id);
     }
 
     public function test_get_order_detail_includes_items_and_stock()
     {
-        $orderNumber = 'NP 12345';
+        $orderNumber = '12345';
 
         $flexxusOrder = [
             'RAZONSOCIAL' => 'Customer 1',
@@ -311,22 +366,29 @@ class PickingServiceTest extends TestCase
             'product_code' => 'PROD1',
             'description' => 'Product 1',
             'quantity_required' => 10,
-            'lot' => 'LOT001',
-            'stock_info' => [
-                'available' => 50,
-                'is_local' => true,
-                'is_sufficient' => true,
-                'shortage' => 0,
-            ],
+            'quantity_picked' => 0,
+            'location' => null,
+            'status' => 'pending',
         ];
 
+        $context = new \App\Services\Picking\WarehouseExecutionContext(
+            $this->warehouse->id,
+            $this->warehouse->code,
+            $this->user->id
+        );
+
+        $this->warehouseContextResolver
+            ->shouldReceive('resolveForUserId')
+            ->with($this->user->id)
+            ->andReturn($context);
+
         $this->flexxusService->shouldReceive('getOrderDetail')
-            ->with($orderNumber)
+            ->with('12345', 'WH01')
             ->once()
             ->andReturn($flexxusOrder);
 
-        $this->flexxusService->shouldReceive('getProductStock')
-            ->with('PROD1', 'WH01')
+        $this->stockValidationService->shouldReceive('getStockForProduct')
+            ->with('PROD1', $this->warehouse->id)
             ->once()
             ->andReturn($stockInfo);
 
@@ -334,9 +396,10 @@ class PickingServiceTest extends TestCase
             ->once()
             ->andReturn($formattedItem);
 
-        $result = $this->service->getOrderDetail($orderNumber, $this->user->id);
+        $result = $this->service->getOrderDetail('NP 12345', $this->user->id);
 
-        $this->assertEquals($orderNumber, $result['order_number']);
+        $this->assertEquals('12345', $result['order_number']);
+        $this->assertEquals('NP', $result['order_type']);
         $this->assertEquals('Customer 1', $result['customer']);
         $this->assertEquals('WH01', $result['warehouse']['code']);
         $this->assertEquals('pending', $result['status']);
@@ -357,7 +420,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrderDetail')
-            ->with($orderNumber)
+            ->with($orderNumber, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrder);
 
@@ -390,12 +455,14 @@ class PickingServiceTest extends TestCase
         $orderNumber = 'NP 99999';
 
         $this->flexxusService->shouldReceive('getOrderDetail')
-            ->with($orderNumber)
+            ->with($orderNumber, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn([]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage("Order {$orderNumber} not found in Flexxus");
+        $this->expectException(OrderNotFoundException::class);
+        $this->expectExceptionMessage("Order {$orderNumber} not found");
 
         $this->service->getOrderDetail($orderNumber, $this->user->id);
     }
@@ -413,7 +480,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -425,9 +494,15 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrderDetail')
-            ->with($orderNumber)
+            ->with($orderNumber, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrder);
+
+        $this->stockCacheService->shouldReceive('prefetchStockForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection);
 
         $result = $this->service->startOrder($orderNumber, $this->user->id);
 
@@ -456,10 +531,112 @@ class PickingServiceTest extends TestCase
             ->once()
             ->andReturn([]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage("Order {$orderNumber} not found or not accessible");
+        $this->expectException(OrderNotFoundException::class);
+        $this->expectExceptionMessage("Order {$orderNumber} not found");
 
         $this->service->startOrder($orderNumber, $this->user->id);
+    }
+
+    public function test_start_order_prefetches_stock_for_all_items(): void
+    {
+        // Arrange
+        $orderNumber = 'NP 54321';
+
+        $flexxusOrders = [
+            ['NUMEROCOMPROBANTE' => '54321', 'DEPOSITO' => $this->warehouse->name],
+        ];
+
+        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+            ->with(Mockery::type('string'), Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
+            ->once()
+            ->andReturn($flexxusOrders);
+
+        $flexxusOrder = [
+            'DETALLE' => [
+                ['CODIGOPARTICULAR' => 'PROD-001', 'PENDIENTE' => 10, 'CANTIDAD' => 10],
+                ['CODIGOPARTICULAR' => 'PROD-002', 'PENDIENTE' => 5, 'CANTIDAD' => 5],
+                ['CODIGOPARTICULAR' => 'PROD-003', 'PENDIENTE' => 3, 'CANTIDAD' => 3],
+            ],
+        ];
+
+        $this->flexxusService->shouldReceive('getOrderDetail')
+            ->with($orderNumber, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
+            ->once()
+            ->andReturn($flexxusOrder);
+
+        // Mock StockCacheService
+        $mockCacheService = Mockery::mock(\App\Services\Picking\Interfaces\StockCacheServiceInterface::class);
+        $mockCacheService->shouldReceive('prefetchStockForOrder')
+            ->once()
+            ->with(Mockery::on(function ($order) use ($orderNumber) {
+                return $order instanceof PickingOrderProgress
+                    && $order->order_number === $orderNumber
+                    && $order->items->count() === 3;
+            }));
+
+        // Create service with mocked cache service
+        $this->service = new PickingService(
+            $this->flexxusService,
+            $this->stockValidationService,
+            $mockCacheService,
+            $this->warehouseContextResolver
+        );
+
+        // Act
+        $result = $this->service->startOrder($orderNumber, $this->user->id);
+
+        // Assert
+        $this->assertInstanceOf(PickingOrderProgress::class, $result);
+        $this->assertCount(3, $result->items);
+    }
+
+    public function test_start_order_with_numeric_only_input_normalizes_to_canonical_format(): void
+    {
+        $orderNumber = '623200';
+        $canonicalOrderNumber = 'NP 623200';
+        $today = now()->format('Y-m-d');
+
+        $flexxusOrders = [
+            [
+                'NUMEROCOMPROBANTE' => '623200',
+                'RAZONSOCIAL' => 'Customer 1',
+            ],
+        ];
+
+        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
+            ->once()
+            ->andReturn($flexxusOrders);
+
+        $flexxusOrder = [
+            'DETALLE' => [
+                ['CODIGOPARTICULAR' => 'PROD1', 'PENDIENTE' => 10, 'CANTIDAD' => 10],
+            ],
+        ];
+
+        $this->flexxusService->shouldReceive('getOrderDetail')
+            ->with($canonicalOrderNumber, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
+            ->once()
+            ->andReturn($flexxusOrder);
+
+        $this->stockCacheService->shouldReceive('prefetchStockForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection);
+
+        $result = $this->service->startOrder($orderNumber, $this->user->id);
+
+        $this->assertInstanceOf(PickingOrderProgress::class, $result);
+        $this->assertEquals($canonicalOrderNumber, $result->order_number, 'Progress order_number should be canonical NP 623200');
+        $this->assertCount(1, $result->items);
+        $this->assertEquals($canonicalOrderNumber, $result->items->first()->order_number, 'Item order_number should be canonical NP 623200');
     }
 
     public function test_pick_item_updates_picked_quantity()
@@ -480,6 +657,25 @@ class PickingServiceTest extends TestCase
             'quantity_picked' => 3,
             'status' => 'in_progress',
         ]);
+
+        // Mock StockValidationService to pass validation
+        $validation = \App\Models\PickingStockValidation::factory()->make([
+            'order_number' => $orderNumber,
+            'item_code' => 'PROD1',
+            'validation_result' => 'passed',
+        ]);
+
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 4, \Mockery::type(User::class))
+            ->andReturn($validation);
+
+        $this->stockValidationService
+            ->shouldReceive('getLatestValidation')
+            ->once()
+            ->with($orderNumber, 'PROD1')
+            ->andReturn($validation);
 
         $result = $this->service->pickItem($orderNumber, 'PROD1', 4, $this->user->id);
 
@@ -512,6 +708,25 @@ class PickingServiceTest extends TestCase
             'status' => 'in_progress',
         ]);
 
+        // Mock StockValidationService to pass validation
+        $validation = \App\Models\PickingStockValidation::factory()->make([
+            'order_number' => $orderNumber,
+            'item_code' => 'PROD1',
+            'validation_result' => 'passed',
+        ]);
+
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 2, \Mockery::type(User::class))
+            ->andReturn($validation);
+
+        $this->stockValidationService
+            ->shouldReceive('getLatestValidation')
+            ->once()
+            ->with($orderNumber, 'PROD1')
+            ->andReturn($validation);
+
         $result = $this->service->pickItem($orderNumber, 'PROD1', 2, $this->user->id);
 
         $this->assertEquals('completed', $result['status']);
@@ -524,7 +739,7 @@ class PickingServiceTest extends TestCase
 
     public function test_pick_item_throws_exception_when_order_not_found()
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(OrderNotFoundException::class);
         $this->expectExceptionMessage('Order NP 99999 not found');
 
         $this->service->pickItem('NP 99999', 'PROD1', 1, $this->user->id);
@@ -541,8 +756,8 @@ class PickingServiceTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
         ]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage("You don't have permission to modify this order");
+        $this->expectException(UnauthorizedOperationException::class);
+        $this->expectExceptionMessage("Operation 'pick items' forbidden");
 
         $this->service->pickItem($orderNumber, 'PROD1', 1, $this->user->id);
     }
@@ -564,8 +779,15 @@ class PickingServiceTest extends TestCase
             'quantity_picked' => 8,
         ]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Cannot pick more than required quantity');
+        // Mock StockValidationService to throw OverPickException
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 3, \Mockery::type(User::class))
+            ->andThrow(new OverPickException($orderNumber, 'PROD1', 3, 2));
+
+        $this->expectException(OverPickException::class);
+        $this->expectExceptionMessage('No se puede marcar más de 2 unidades para PROD1');
 
         $this->service->pickItem($orderNumber, 'PROD1', 3, $this->user->id);
     }
@@ -613,8 +835,8 @@ class PickingServiceTest extends TestCase
             'status' => 'in_progress',
         ]);
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Cannot complete order with incomplete items');
+        $this->expectException(InvalidOrderStateException::class);
+        $this->expectExceptionMessage('Cannot complete order');
 
         $this->service->completeOrder($orderNumber, $this->user->id);
     }
@@ -750,7 +972,9 @@ class PickingServiceTest extends TestCase
         ];
 
         $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+            ->with($today, Mockery::on(function ($warehouse) {
+                return $warehouse instanceof \App\Models\Warehouse;
+            }))
             ->once()
             ->andReturn($flexxusOrders);
 
@@ -784,5 +1008,192 @@ class PickingServiceTest extends TestCase
 
         $this->assertNull($secondOrder['assigned_to']);
         $this->assertEquals(0, $secondOrder['items_picked']);
+    }
+
+    // New tests for StockValidationService integration (Task 2.4)
+
+    public function test_pick_item_throws_over_pick_exception_when_exceeding_remaining()
+    {
+        $orderNumber = 'NP 12345';
+
+        PickingOrderProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'user_id' => $this->user->id,
+            'warehouse_id' => $this->warehouse->id,
+        ]);
+
+        PickingItemProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'product_code' => 'PROD1',
+            'quantity_required' => 10,
+            'quantity_picked' => 8,
+            'status' => 'in_progress',
+        ]);
+
+        // Mock validation to throw OverPickException
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 5, \Mockery::type(User::class))
+            ->andThrow(new OverPickException($orderNumber, 'PROD1', 5, 2));
+
+        $this->expectException(OverPickException::class);
+        $this->expectExceptionMessage('No se puede marcar más de 2 unidades para PROD1');
+
+        $this->service->pickItem($orderNumber, 'PROD1', 5, $this->user->id);
+    }
+
+    public function test_pick_item_throws_already_picked_exception_when_item_completed()
+    {
+        $orderNumber = 'NP 12345';
+
+        PickingOrderProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'user_id' => $this->user->id,
+            'warehouse_id' => $this->warehouse->id,
+        ]);
+
+        PickingItemProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'product_code' => 'PROD1',
+            'quantity_required' => 10,
+            'quantity_picked' => 10,
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+
+        // Mock validation to throw AlreadyPickedException
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 1, \Mockery::type(User::class))
+            ->andThrow(new AlreadyPickedException($orderNumber, 'PROD1', 10, now()));
+
+        $this->expectException(AlreadyPickedException::class);
+        $this->expectExceptionMessage('El item PROD1 ya fue pickeado');
+
+        $this->service->pickItem($orderNumber, 'PROD1', 1, $this->user->id);
+    }
+
+    public function test_pick_item_throws_physical_stock_insufficient_exception()
+    {
+        $orderNumber = 'NP 12345';
+
+        PickingOrderProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'user_id' => $this->user->id,
+            'warehouse_id' => $this->warehouse->id,
+        ]);
+
+        PickingItemProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'product_code' => 'PROD1',
+            'quantity_required' => 10,
+            'quantity_picked' => 5,
+            'status' => 'in_progress',
+        ]);
+
+        // Mock validation to throw PhysicalStockInsufficientException
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 3, \Mockery::type(User::class))
+            ->andThrow(new PhysicalStockInsufficientException($orderNumber, 'PROD1', 3, 0));
+
+        $this->expectException(PhysicalStockInsufficientException::class);
+        $this->expectExceptionMessage('Stock físico insuficiente: hay 0, se solicitaron 3');
+
+        $this->service->pickItem($orderNumber, 'PROD1', 3, $this->user->id);
+    }
+
+    public function test_pick_item_response_includes_stock_after_pick()
+    {
+        $orderNumber = 'NP 12345';
+
+        $progress = PickingOrderProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'user_id' => $this->user->id,
+            'warehouse_id' => $this->warehouse->id,
+        ]);
+
+        PickingItemProgress::factory()->create([
+            'picking_order_progress_id' => $progress->id,
+            'order_number' => $orderNumber,
+            'product_code' => 'PROD1',
+            'quantity_required' => 10,
+            'quantity_picked' => 5,
+            'status' => 'in_progress',
+        ]);
+
+        $validation = \App\Models\PickingStockValidation::factory()->make([
+            'order_number' => $orderNumber,
+            'item_code' => 'PROD1',
+            'validation_result' => 'passed',
+            'available_qty' => 20,
+        ]);
+
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->once()
+            ->with($orderNumber, 'PROD1', 3, \Mockery::type(User::class))
+            ->andReturn($validation);
+
+        $this->stockValidationService
+            ->shouldReceive('getLatestValidation')
+            ->once()
+            ->with($orderNumber, 'PROD1')
+            ->andReturn($validation);
+
+        $result = $this->service->pickItem($orderNumber, 'PROD1', 3, $this->user->id);
+
+        $this->assertArrayHasKey('stock_after_pick', $result);
+        $this->assertEquals(12, $result['stock_after_pick']);
+        $this->assertEquals(8, $result['quantity_picked']);
+        $this->assertEquals(2, $result['remaining']);
+    }
+
+    public function test_pick_item_stock_after_pick_decrements_with_each_pick()
+    {
+        $orderNumber = 'NP 12345';
+
+        $progress = PickingOrderProgress::factory()->create([
+            'order_number' => $orderNumber,
+            'user_id' => $this->user->id,
+            'warehouse_id' => $this->warehouse->id,
+        ]);
+
+        PickingItemProgress::factory()->create([
+            'picking_order_progress_id' => $progress->id,
+            'order_number' => $orderNumber,
+            'product_code' => 'PROD1',
+            'quantity_required' => 10,
+            'quantity_picked' => 0,
+            'status' => 'pending',
+        ]);
+
+        $validation = \App\Models\PickingStockValidation::factory()->make([
+            'order_number' => $orderNumber,
+            'item_code' => 'PROD1',
+            'validation_result' => 'passed',
+            'available_qty' => 50,
+        ]);
+
+        $this->stockValidationService
+            ->shouldReceive('validateStockForPick')
+            ->times(2)
+            ->with($orderNumber, 'PROD1', \Mockery::type('int'), \Mockery::type(User::class))
+            ->andReturn($validation);
+
+        $this->stockValidationService
+            ->shouldReceive('getLatestValidation')
+            ->times(2)
+            ->with($orderNumber, 'PROD1')
+            ->andReturn($validation);
+
+        $result1 = $this->service->pickItem($orderNumber, 'PROD1', 3, $this->user->id);
+        $this->assertEquals(47, $result1['stock_after_pick']);
+
+        $result2 = $this->service->pickItem($orderNumber, 'PROD1', 4, $this->user->id);
+        $this->assertEquals(43, $result2['stock_after_pick']);
     }
 }

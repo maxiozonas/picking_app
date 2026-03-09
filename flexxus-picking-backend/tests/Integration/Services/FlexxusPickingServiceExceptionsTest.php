@@ -6,13 +6,17 @@ use App\Exceptions\ExternalApi\ExternalApiAuthenticationException;
 use App\Exceptions\ExternalApi\ExternalApiConnectionException;
 use App\Exceptions\ExternalApi\ExternalApiRequestException;
 use App\Exceptions\ExternalApi\ExternalApiServerErrorException;
+use App\Models\Warehouse;
 use App\Services\Picking\FlexxusPickingService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class FlexxusPickingServiceExceptionsTest extends TestCase
 {
+    use RefreshDatabase;
+
     private FlexxusPickingService $service;
 
     private string $baseUrl = 'https://api.flexxus.example.com';
@@ -22,6 +26,8 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
     private string $password = 'testpass';
 
     private array $deviceInfo = ['device_id' => 'test-device'];
+
+    private Warehouse $warehouse;
 
     protected function setUp(): void
     {
@@ -34,6 +40,14 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         ]);
         $this->service = app(FlexxusPickingService::class);
         Cache::flush();
+
+        // Create test warehouse
+        $this->warehouse = Warehouse::factory()->create([
+            'code' => 'RONDEAU',
+            'flexxus_url' => $this->baseUrl,
+            'flexxus_username' => $this->username,
+            'flexxus_password' => $this->password,
+        ]);
     }
 
     public function test_connection_timeout_throws_external_api_connection_exception(): void
@@ -46,7 +60,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiConnectionException::class);
         $this->expectExceptionMessage('Connection or timeout error');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_connection_refused_throws_external_api_connection_exception(): void
@@ -58,7 +72,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiConnectionException::class);
         $this->expectExceptionMessageMatches('/Connection or timeout error/');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_auth_failure_401_throws_external_api_authentication_exception(): void
@@ -74,7 +88,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectExceptionCode(502); // HTTP status for our API response
         $this->expectExceptionMessage('Authentication failed with Flexxus API');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_auth_failure_403_throws_external_api_authentication_exception(): void
@@ -89,7 +103,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiAuthenticationException::class);
         $this->expectExceptionCode(502);
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_4xx_client_error_throws_external_api_request_exception(): void
@@ -111,7 +125,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectExceptionCode(502);
         $this->expectExceptionMessageMatches('/Flexxus API request failed.*400/');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_404_not_found_throws_external_api_request_exception(): void
@@ -131,7 +145,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiRequestException::class);
         $this->expectExceptionCode(502);
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_422_validation_error_throws_external_api_request_exception(): void
@@ -152,7 +166,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectExceptionCode(502);
         $this->expectExceptionMessageMatches('/Validation failed/');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_500_server_error_throws_external_api_server_error_exception(): void
@@ -173,7 +187,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectExceptionCode(502);
         $this->expectExceptionMessageMatches('/Flexxus API server error.*500/');
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_502_bad_gateway_throws_external_api_server_error_exception(): void
@@ -193,7 +207,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiServerErrorException::class);
         $this->expectExceptionCode(502);
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_503_service_unavailable_throws_external_api_server_error_exception(): void
@@ -213,7 +227,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         $this->expectException(ExternalApiServerErrorException::class);
         $this->expectExceptionCode(502);
 
-        $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+        $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
     }
 
     public function test_connection_exception_includes_endpoint_in_context(): void
@@ -223,7 +237,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         });
 
         try {
-            $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+            $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
             $this->fail('Expected ExternalApiConnectionException to be thrown');
         } catch (ExternalApiConnectionException $e) {
             $this->assertNotNull($e->getEndpoint());
@@ -242,7 +256,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         ]);
 
         try {
-            $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+            $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
             $this->fail('Expected ExternalApiAuthenticationException to be thrown');
         } catch (ExternalApiAuthenticationException $e) {
             $this->assertEquals(401, $e->getFlexxusStatusCode());
@@ -265,7 +279,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         ]);
 
         try {
-            $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+            $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
             $this->fail('Expected ExternalApiRequestException to be thrown');
         } catch (ExternalApiRequestException $e) {
             $this->assertStringContainsString('Validation failed', $e->getMessage());
@@ -288,7 +302,7 @@ class FlexxusPickingServiceExceptionsTest extends TestCase
         ]);
 
         try {
-            $this->service->getOrdersByDateAndWarehouse('2026-03-04', 'RONDEAU');
+            $this->service->getOrdersByDateAndWarehouse('2026-03-04', $this->warehouse);
             $this->fail('Expected ExternalApiServerErrorException to be thrown');
         } catch (ExternalApiServerErrorException $e) {
             $this->assertEquals(500, $e->getFlexxusStatusCode());

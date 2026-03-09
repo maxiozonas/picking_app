@@ -54,7 +54,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => $orderQty,
             'quantity_picked' => 8, // Already picked 8
         ]);
@@ -80,7 +80,7 @@ class StockValidationServiceTest extends TestCase
 
         $item = PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => $orderQty,
             'quantity_picked' => $orderQty, // Already fully picked
             'completed_at' => now(),
@@ -106,7 +106,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => 10,
             'quantity_picked' => 0,
         ]);
@@ -116,7 +116,7 @@ class StockValidationServiceTest extends TestCase
         $mockAlert = $this->createMock(AlertServiceInterface::class);
 
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
                 'total' => 3, // Only 3 available
@@ -146,7 +146,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => 10,
             'quantity_picked' => 0,
         ]);
@@ -158,7 +158,7 @@ class StockValidationServiceTest extends TestCase
         );
 
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
                 'total' => 50, // Sufficient stock
@@ -251,7 +251,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => 10,
             'quantity_picked' => 0,
         ]);
@@ -260,7 +260,7 @@ class StockValidationServiceTest extends TestCase
         $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
 
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
                 'total' => 3, // Only 3 available
@@ -304,7 +304,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => $orderQty,
             'quantity_picked' => 8, // Already picked 8
         ]);
@@ -339,7 +339,7 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => 10,
             'quantity_picked' => 0,
         ]);
@@ -348,7 +348,7 @@ class StockValidationServiceTest extends TestCase
         $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
 
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
                 'total' => 50, // Sufficient stock
@@ -395,17 +395,23 @@ class StockValidationServiceTest extends TestCase
 
         PickingItemProgress::factory()->create([
             'picking_order_progress_id' => $this->order->id,
-            'item_code' => $itemCode,
+            'product_code' => $itemCode,
             'quantity_requested' => 10,
             'quantity_picked' => 0,
         ]);
 
         $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with(
+                $itemCode,
+                $this->callback(function ($warehouse) {
+                    return $warehouse instanceof \App\Models\Warehouse
+                        && $warehouse->id === $this->warehouse->id;
+                })
+            )
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
-                'total' => 50,
+                'total' => 3, // Only 3 available
                 'is_local' => true,
             ]);
 

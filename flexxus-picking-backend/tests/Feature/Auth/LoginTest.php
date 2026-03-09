@@ -10,6 +10,14 @@ class LoginTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Create roles directly without seeder to avoid nested transactions
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'empleado']);
+    }
+
     public function test_user_can_login_with_valid_credentials(): void
     {
         $user = User::factory()->create([
@@ -92,7 +100,7 @@ class LoginTest extends TestCase
 
     public function test_login_response_has_correct_structure(): void
     {
-        $user = User::factory()->create([
+        $user = User::factory()->empleado()->create([
             'password' => bcrypt('password'),
         ]);
 
@@ -119,7 +127,6 @@ class LoginTest extends TestCase
                             'code',
                             'name',
                         ],
-                        'available_warehouses',
                     ],
                 ],
             ]);
@@ -159,5 +166,53 @@ class LoginTest extends TestCase
         ]);
 
         $this->assertNotNull($user->fresh()->last_login_at);
+    }
+
+    public function test_login_response_hides_override_fields_for_empleado_role(): void
+    {
+        $user = User::factory()->empleado()->create([
+            'password' => bcrypt('password'),
+            'can_override_warehouse' => true,
+            'override_expires_at' => now()->addHours(2),
+        ]);
+
+        $user->availableWarehouses()->attach(\App\Models\Warehouse::factory()->create()->id);
+
+        $response = $this->postJson('/api/auth/login', [
+            'username' => $user->username,
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonMissingPath('data.user.can_override_warehouse')
+            ->assertJsonMissingPath('data.user.override_expires_at')
+            ->assertJsonMissingPath('data.user.available_warehouses');
+    }
+
+    public function test_login_response_includes_override_fields_for_admin_role(): void
+    {
+        $user = User::factory()->admin()->create([
+            'password' => bcrypt('password'),
+            'can_override_warehouse' => true,
+            'override_expires_at' => now()->addHours(2),
+        ]);
+
+        $user->availableWarehouses()->attach(\App\Models\Warehouse::factory()->create()->id);
+
+        $response = $this->postJson('/api/auth/login', [
+            'username' => $user->username,
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => [
+                        'can_override_warehouse',
+                        'override_expires_at',
+                        'available_warehouses',
+                    ],
+                ],
+            ]);
     }
 }

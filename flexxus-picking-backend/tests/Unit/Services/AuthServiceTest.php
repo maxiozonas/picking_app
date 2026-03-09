@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AuthServiceTest extends TestCase
@@ -23,6 +24,8 @@ class AuthServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Role::firstOrCreate(['name' => 'admin']);
+        Role::firstOrCreate(['name' => 'empleado']);
         $this->authRepository = Mockery::mock(AuthRepositoryInterface::class);
         $this->authService = new AuthService($this->authRepository);
     }
@@ -119,7 +122,7 @@ class AuthServiceTest extends TestCase
     public function test_me_returns_user_with_warehouse_context(): void
     {
         $warehouse = Warehouse::factory()->create();
-        $user = User::factory()->for($warehouse)->create();
+        $user = User::factory()->for($warehouse)->create(['role' => 'admin']);
         $warehouse2 = Warehouse::factory()->create();
         $user->availableWarehouses()->attach($warehouse2->id);
 
@@ -129,8 +132,29 @@ class AuthServiceTest extends TestCase
         $this->assertEquals($user->id, $result['user']['id']);
         $this->assertEquals($user->username, $result['user']['username']);
         $this->assertEquals($warehouse->id, $result['user']['warehouse_id']);
-        $this->assertIsArray($result['user']['available_warehouses']->toArray());
+        $this->assertArrayHasKey('available_warehouses', $result['user']);
+        $this->assertInstanceOf(\Illuminate\Support\Collection::class, $result['user']['available_warehouses']);
         $this->assertCount(1, $result['user']['available_warehouses']);
+    }
+
+    public function test_me_returns_override_warehouse_context_for_admin_with_active_override(): void
+    {
+        $warehouse1 = Warehouse::factory()->create(['code' => 'WAREHOUSE1']);
+        $warehouse2 = Warehouse::factory()->create(['code' => 'WAREHOUSE2']);
+        $user = User::factory()->admin()->create([
+            'warehouse_id' => $warehouse2->id,
+            'override_expires_at' => now()->addHour(),
+            'can_override_warehouse' => true,
+            'role' => 'admin',
+        ]);
+        $user->assignRole('admin');
+        $user->availableWarehouses()->attach([$warehouse1->id, $warehouse2->id]);
+
+        $result = $this->authService->me($user->fresh());
+
+        $this->assertSame($warehouse2->id, $result['user']['warehouse']['id']);
+        $this->assertSame('WAREHOUSE2', $result['user']['warehouse']['code']);
+        $this->assertTrue($result['user']['warehouse']['is_override']);
     }
 
     public function test_override_warehouse_sets_override_expires_at(): void
@@ -139,6 +163,7 @@ class AuthServiceTest extends TestCase
         $warehouse2 = Warehouse::factory()->create();
         $user = User::factory()->for($warehouse1)->create([
             'can_override_warehouse' => true,
+            'role' => 'admin',
         ]);
         $user->availableWarehouses()->attach($warehouse2->id);
 

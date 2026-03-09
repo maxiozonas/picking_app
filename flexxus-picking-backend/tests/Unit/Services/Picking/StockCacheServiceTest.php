@@ -88,7 +88,13 @@ class StockCacheServiceTest extends TestCase
         );
 
         $mockFlexxus->method('getProductStock')
-            ->with($itemCode, $this->warehouse->code)
+            ->with(
+                $itemCode,
+                $this->callback(function ($warehouse) {
+                    return $warehouse instanceof \App\Models\Warehouse
+                        && $warehouse->id === $this->warehouse->id;
+                })
+            )
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
                 'total' => 50,
