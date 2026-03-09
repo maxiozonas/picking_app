@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminOrdersController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\WarehouseController;
 use App\Http\Controllers\Api\AuthController;
@@ -21,6 +23,13 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth:sanctum', 'role.admin')->prefix('admin')->group(function () {
+    // Dashboard statistics
+    Route::get('/stats', [AdminDashboardController::class, 'stats']);
+
+    // Admin orders management
+    Route::get('/orders', [AdminOrdersController::class, 'index']);
+    Route::get('/orders/{order_number}', [AdminOrdersController::class, 'show']);
+
     // User CRUD
     Route::apiResource('users', UserController::class);
 

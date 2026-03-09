@@ -70,4 +70,40 @@ class PickingOrderProgress extends Model
     {
         return $query->where('status', 'has_issues');
     }
+
+    public function scopeByWarehouse($query, int $warehouseId)
+    {
+        return $query->where('warehouse_id', $warehouseId);
+    }
+
+    public function scopeDateRange($query, ?string $from = null, ?string $to = null)
+    {
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        return $query;
+    }
+
+    public function scopeSearchByNumber($query, ?string $search = null)
+    {
+        if ($search) {
+            return $query->where('order_number', 'like', "%{$search}%");
+        }
+
+        return $query;
+    }
+
+    public function scopeWithStatus($query, ?string $status = null)
+    {
+        if ($status) {
+            return $query->where('status', $status);
+        }
+
+        return $query;
+    }
 }
