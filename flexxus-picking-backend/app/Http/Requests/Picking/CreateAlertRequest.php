@@ -14,7 +14,7 @@ class CreateAlertRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'alert_type' => ['required', 'in:stock_issue,product_not_found,quality_issue,other'],
+            'alert_type' => ['required', 'in:insufficient_stock,product_missing,order_issue'],
             'message' => ['required', 'string', 'max:1000'],
             'severity' => ['required', 'in:low,medium,high,critical'],
             'product_code' => ['nullable', 'string'],
