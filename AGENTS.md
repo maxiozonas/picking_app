@@ -220,6 +220,323 @@ The following services are available in the `App\Services\Picking` namespace:
 | `StockCacheService` | `StockCacheServiceInterface` | Aggressive caching (45s TTL) for stock data |
 | `AlertService` | `AlertServiceInterface` | Alert management for stock issues |
 | `FlexxusPickingService` | - | External API client for Flexxus ERP |
+| `FlexxusClientFactory` | `FlexxusClientFactoryInterface` | Factory for creating warehouse-scoped Flexxus clients |
+
+---
+
+## 🏭 Factory Pattern para External API Clients
+
+### FlexxusClientFactory - Multi-Account Architecture
+
+**Propósito:** Crear instancias de FlexxusClient con credenciales específicas de cada warehouse.
+
+**Arquitectura:**
+- Cada warehouse tiene sus propias credenciales de Flexxus (flexxus_username, flexxus_password)
+- Las credenciales están encriptadas en la base de datos usando `encrypted` cast
+- El factory crea clientes con credenciales específicas y cache scopes por warehouse
+
+#### FlexxusClientFactoryInterface
+
+```php
+<?php
+
+namespace App\Services\Picking\Interfaces;
+
+use App\Models\Warehouse;
+use App\Http\Clients\Flexxus\FlexxusClient;
+
+interface FlexxusClientFactoryInterface
+{
+    /**
+     * Create a Flexxus client for a specific warehouse
+     *
+     * @param Warehouse $warehouse Warehouse with flexxus credentials
+     * @return FlexxusClient Configured client instance
+     */
+    public function createForWarehouse(Warehouse $warehouse): FlexxusClient;
+}
+```
+
+#### FlexxusClientFactory Implementation
+
+```php
+<?php
+
+namespace App\Services\Picking;
+
+use App\Http\Clients\Flexxus\FlexxusClient;
+use App\Models\Warehouse;
+use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
+
+class FlexxusClientFactory implements FlexxusClientFactoryInterface
+{
+    public function createForWarehouse(Warehouse $warehouse): FlexxusClient
+    {
+        // Get credentials from warehouse (automatically decrypted by encrypted cast)
+        // Falls back to config() if warehouse credentials are null
+        $baseUrl = $warehouse->flexxus_url ?? config('flexxus.url');
+        $username = $warehouse->flexxus_username ?? config('flexxus.username');
+        $password = $warehouse->flexxus_password ?? config('flexxus.password');
+        $deviceInfo = config('flexxus.device_info');
+
+        // Use warehouse code as cache suffix for token scoping
+        $cacheSuffix = $warehouse->code;
+
+        return new FlexxusClient(
+            $baseUrl,
+            $username,
+            $password,
+            $deviceInfo,
+            $cacheSuffix
+        );
+    }
+}
+```
+
+#### Usage in Services
+
+```php
+<?php
+
+namespace App\Services\Picking;
+
+use App\Models\Warehouse;
+use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
+
+class FlexxusPickingService
+{
+    public function __construct(
+        private FlexxusClientFactoryInterface $clientFactory
+    ) {}
+
+    public function getProductStock(
+        string $productCode,
+        Warehouse $warehouse
+    ): array {
+        // Create warehouse-specific client
+        $client = $this->clientFactory->createForWarehouse($warehouse);
+
+        // Use STOCKTOTALDEPOSITO from product endpoint
+        $product = $client->getProduct($productCode);
+
+        return [
+            'available' => $product['STOCKTOTALDEPOSITO'] ?? 0,
+            'warehouse_id' => $warehouse->id,
+        ];
+    }
+}
+```
+
+#### Dependency Injection Setup
+
+**Register in AppServiceProvider:**
+
+```php
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
+use App\Services\Picking\FlexxusClientFactory;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(
+            FlexxusClientFactoryInterface::class,
+            FlexxusClientFactory::class
+        );
+    }
+}
+```
+
+**Reglas del Factory Pattern:**
+- ✅ SIEMPRE inyectar la interface, NO la clase concreta
+- ✅ El factory es responsable de crear y configurar instancias
+- ✅ Los servicios reciben el factory por constructor, NO el cliente directamente
+- ✅ Los clientes son creados por warehouse (no singleton global)
+- ✅ Cada warehouse tiene su propio token cache key
+- ✅ Las credenciales están encriptadas en BD (auto-decrypted por Eloquent cast)
+
+---
+
+## 🔐 Warehouse Credentials Management
+
+### Database Schema
+
+**Campos agregados a tabla `warehouses`:**
+- `flexxus_username` - Usuario de Flexxus para este warehouse (encrypted)
+- `flexxus_password` - Password de Flexxus para este warehouse (encrypted)
+
+### Warehouse Model - Encrypted Credentials
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Warehouse extends Model
+{
+    protected $fillable = [
+        'name',
+        'code',
+        'flexxus_username', // Se encripta automáticamente
+        'flexxus_password', // Se encripta automáticamente
+    ];
+
+    protected $casts = [
+        'flexxus_username' => 'encrypted',
+        'flexxus_password' => 'encrypted',
+    ];
+
+    // Acceso transparente (auto-decrypt)
+    public function getFlexxusCredentials(): array
+    {
+        return [
+            'username' => $this->flexxus_username, // Decrypted automatically
+            'password' => $this->flexxus_password, // Decrypted automatically
+        ];
+    }
+}
+```
+
+### Migration Commands
+
+#### FlexxusMigrateCredentialsCommand
+
+**Migra credenciales desde .env a la base de datos:**
+
+```bash
+# Migrar credenciales globales a todos los warehouses
+php artisan flexxus:migrate-credentials
+
+# Migrar a un warehouse específico
+php artisan flexxus:migrate-credentials --warehouse=CENTRO
+
+# Verificar qué se va a migrar (dry-run)
+php artisan flexxus:migrate-credentials --dry-run
+```
+
+**Qué hace:**
+1. Lee `FLEXXUS_USERNAME` y `FLEXXUS_PASSWORD` desde .env
+2. Encripta las credenciales usando Laravel encryption
+3. Actualiza todos los warehouses (o uno específico) en BD
+4. Opcionalmente elimina las variables de .env (con confirmación)
+
+#### FlexxusResetCredentialsCommand
+
+**Rollback de migración de credenciales:**
+
+```bash
+# Eliminar credenciales de todos los warehouses
+php artisan flexxus:reset-credentials
+
+# Eliminar de un warehouse específico
+php artisan flexxus:reset-credentials --warehouse=CENTRO
+```
+
+**Qué hace:**
+1. Setea `flexxus_username` y `flexxus_password` a NULL
+2. El sistema vuelve a usar config() fallback (compatibilidad hacia atrás)
+
+### Seguridad y Compatibilidad
+
+**Encrypted Casts:**
+- ✅ Las credenciales se encriptan al guardar en BD
+- ✅ Se desencriptan automáticamente al acceder ($warehouse->flexxus_username)
+- ✅ Usa APP_KEY de Laravel para encriptación
+- ⚠️ Si cambias APP_KEY, las credenciales encriptadas se corrompen (requieren re-migración)
+
+**Backward Compatibility (Fallback):**
+- Si un warehouse NO tiene credenciales en BD (NULL), FlexxusClient usa config()
+- Esto permite migración gradual sin downtime
+- Verificar que config() tiene credenciales por defecto
+
+**Testing:**
+```php
+public function test_warehouse_credentials_are_encrypted()
+{
+    $warehouse = Warehouse::factory()->create([
+        'flexxus_username' => 'test_user',
+        'flexxus_password' => 'test_password',
+    ]);
+
+    // Verificar que en BD están encriptados
+    $dbPassword = DB::table('warehouses')
+        ->where('id', $warehouse->id)
+        ->value('flexxus_password');
+
+    $this->assertNotEquals('test_password', $dbPassword);
+    $this->assertNotEmpty($dbPassword);
+
+    // Verificar que al acceder están desencriptados
+    $this->assertEquals('test_password', $warehouse->flexxus_password);
+}
+```
+
+---
+
+## 📋 Comandos de Migración Flexxus
+
+### Migración de Credenciales Multi-Account
+
+```bash
+# === MIGRACIÓN ===
+# Migrar credenciales desde .env a BD (todos los warehouses)
+php artisan flexxus:migrate-credentials
+
+# Migrar a un warehouse específico
+php artisan flexxus:migrate-credentials --warehouse=CENTRO
+
+# Ver qué se va a hacer (sin hacer cambios)
+php artisan flexxus:migrate-credentials --dry-run
+
+# === ROLLBACK ===
+# Eliminar credenciales de BD (volver a config global)
+php artisan flexxus:reset-credentials
+
+# Eliminar de un warehouse específico
+php artisan flexxus:reset-credentials --warehouse=CENTRO
+```
+
+**Documentación completa:** Ver `docs/flexxus-multi-account-migration.md`
+
+---
+
+## 🔙 Backward Compatibility
+
+### Config Fallback para Flexxus Client
+
+**Escenario:** Si un warehouse no tiene credenciales en BD, usar configuración global.
+
+**Implementación en FlexxusClient:**
+
+```php
+public function __construct(
+    ?string $baseUrl = null,
+    ?string $username = null,
+    ?string $password = null,
+    ?array $deviceInfo = null,
+    ?string $cacheKeySuffix = null
+) {
+    // Use provided parameters or fall back to config (backward compatibility)
+    $this->baseUrl = $baseUrl ?? config('flexxus.url');
+    $this->username = $username ?? config('flexxus.username');
+    $this->password = $password ?? config('flexxus.password');
+    $this->deviceInfo = $deviceInfo ?? config('flexxus.device_info');
+    $this->cacheKeySuffix = $cacheKeySuffix;
+}
+```
+
+**Reglas:**
+- ✅ Si `username/password` son NULL, usar config() global
+- ✅ Esto permite migración gradual sin romper el sistema
+- ✅ Warning en logs si se usa fallback (para trackear warehouses sin migrar)
+- ✅ Una vez migrados todos los warehouses, se puede remover el fallback
 
 #### Controllers (API RESTful)
 ```php
@@ -837,6 +1154,6 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 ---
 
-**Última actualización:** 2026-03-03
-**Versión:** 1.0.0
+**Última actualización:** 2026-03-05
+**Versión:** 1.1.0 (Multi-Account Flexxus)
 **Framework:** Laravel 12 (PHP 8.2+)
