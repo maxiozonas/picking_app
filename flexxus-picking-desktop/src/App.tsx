@@ -1,26 +1,75 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from '@/components/ui/toaster'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { MainLayout } from '@/components/layout/MainLayout'
+import { LoginPage } from '@/pages/LoginPage'
+import { DashboardPage } from '@/pages/DashboardPage'
+import { OrdersPage } from '@/pages/OrdersPage'
+import { InProgressPage } from '@/pages/InProgressPage'
+import { OrderDetailPage } from '@/pages/OrderDetailPage'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60, // 1 minute
       retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
-});
+})
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  )
+}
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<div className="p-8">Admin Desktop - Loading...</div>} />
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            {/* Public route */}
+            <Route path="/login" element={<LoginPage />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <Routes>
+                        <Route index element={<DashboardPage />} />
+                        <Route path="orders" element={<OrdersPage />} />
+                        <Route path="orders/in-progress" element={<InProgressPage />} />
+                        <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Suspense>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch all - redirect to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+          <Toaster />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
 }
 
-export default App;
+export default App
