@@ -63,10 +63,6 @@ class User extends Authenticatable
 
     public function getCurrentWarehouseIdAttribute(): int
     {
-        if ($this->override_expires_at && $this->override_expires_at->isFuture()) {
-            return $this->getAttributes()['warehouse_id'] ?? $this->warehouse_id;
-        }
-
         return $this->warehouse_id;
     }
 

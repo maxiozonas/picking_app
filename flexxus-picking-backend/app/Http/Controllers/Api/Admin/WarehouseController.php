@@ -6,11 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\WarehouseResource;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Admin\WarehouseServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class WarehouseController extends Controller
 {
+    public function __construct(
+        private WarehouseServiceInterface $warehouseService
+    ) {}
+
     public function index(): AnonymousResourceCollection
     {
         $warehouses = Warehouse::active()->get();
@@ -30,6 +36,7 @@ class WarehouseController extends Controller
         }
 
         $user->warehouse_id = $warehouse->id;
+        $user->override_expires_at = null;
         $user->save();
 
         return response()->json([
@@ -97,6 +104,36 @@ class WarehouseController extends Controller
                     'is_active' => $user->warehouse->is_active,
                 ],
             ],
+        ]);
+    }
+
+    public function updateFlexxusCredentials(Request $request, int $warehouseId): JsonResponse
+    {
+        $warehouse = Warehouse::findOrFail($warehouseId);
+
+        $validated = $request->validate([
+            'flexxus_url' => ['required', 'url'],
+            'flexxus_username' => ['required', 'string'],
+            'flexxus_password' => ['required', 'string'],
+        ]);
+
+        $this->warehouseService->updateFlexxusCredentials($warehouse, $validated);
+
+        return response()->json([
+            'message' => 'Warehouse Flexxus credentials updated successfully',
+            'data' => $this->warehouseService->getCredentialStatus($warehouse->fresh()),
+        ]);
+    }
+
+    public function clearFlexxusCredentials(int $warehouseId): JsonResponse
+    {
+        $warehouse = Warehouse::findOrFail($warehouseId);
+
+        $this->warehouseService->clearFlexxusCredentials($warehouse);
+
+        return response()->json([
+            'message' => 'Warehouse Flexxus credentials cleared successfully',
+            'data' => $this->warehouseService->getCredentialStatus($warehouse->fresh()),
         ]);
     }
 }

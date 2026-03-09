@@ -16,6 +16,7 @@ class WarehouseResource extends JsonResource
             'client' => $this->client,
             'branch' => $this->branch,
             'is_active' => $this->is_active,
+            'has_flexxus_credentials' => $this->hasCompleteFlexxusCredentials(),
         ];
     }
 }
