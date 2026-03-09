@@ -19,11 +19,11 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'sanctum']);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
-        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
-        $empleadoRole = Role::firstOrCreate(['name' => 'empleado', 'guard_name' => 'sanctum']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $empleadoRole = Role::firstOrCreate(['name' => 'empleado']);
 
         $adminRole->givePermissionTo(Permission::all());
     }

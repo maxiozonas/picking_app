@@ -24,6 +24,15 @@ class UserFactory extends Factory
         ];
     }
 
+    protected function initialize(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            if (! $user->hasRole($user->role)) {
+                $user->assignRole($user->role);
+            }
+        });
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -36,5 +45,24 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'can_override_warehouse' => true,
         ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+            'can_override_warehouse' => true,
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('admin');
+        });
+    }
+
+    public function empleado(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'empleado',
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('empleado');
+        });
     }
 }

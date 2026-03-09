@@ -165,6 +165,8 @@ app/
 
 ## 🚀 Installation
 
+> **Quick Start for XAMPP Users**: Follow the [Local Setup Guide (XAMPP MySQL)](docs/local-setup-xampp-mysql.md) for detailed step-by-step instructions.
+
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/maxiozonas/picking_app.git
@@ -184,6 +186,8 @@ php artisan key:generate
 
 ### 4. Database Configuration
 
+**For XAMPP MySQL local development**, see [Local Setup Guide (XAMPP MySQL)](docs/local-setup-xampp-mysql.md).
+
 Edit `.env` file:
 ```env
 DB_CONNECTION=mysql
@@ -191,8 +195,10 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=picking_app
 DB_USERNAME=root
-DB_PASSWORD=your_password_here
+DB_PASSWORD=
 ```
+
+> ⚠️ **XAMPP Default**: XAMPP MySQL uses `root` username with empty password by default.
 
 ### 5. Run Migrations
 ```bash

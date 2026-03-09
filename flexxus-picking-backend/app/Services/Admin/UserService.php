@@ -44,15 +44,17 @@ class UserService implements UserServiceInterface
 
     public function create(array $data): User
     {
+        $warehouseId = ($data['role'] ?? 'empleado') === 'empleado'
+            ? ($data['warehouse_id'] ?? null)
+            : null;
+
         $user = User::create([
             'username' => $data['username'],
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => $data['role'] ?? 'empleado',
-            'warehouse_id' => ($data['role'] ?? 'empleado') === 'empleado'
-                ? ($data['warehouse_id'] ?? null)
-                : null,
+            'warehouse_id' => $warehouseId,
             'is_active' => $data['is_active'] ?? true,
             'can_override_warehouse' => false,
         ]);
