@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import api from '@/lib/api'
-import { PaginatedResponse, PickingOrder, OrderStatus } from '@/types/api'
+import { PaginatedResponse, PickingOrder, OrderStatus, OrderDetail } from '@/types/api'
 
 export interface UseOrdersParams {
   search?: string
@@ -55,34 +55,8 @@ export function useOrders(params: UseOrdersParams = {}) {
   })
 }
 
-/**
- * Extended order type with items and alerts for detail view
- */
-export interface OrderDetail extends PickingOrder {
-  items: PickingOrderItem[]
-  alerts: PickingAlert[]
-}
-
-export interface PickingOrderItem {
-  id: number
-  order_id: number
-  product_code: string
-  product_name: string
-  quantity: number
-  picked_quantity: number
-  location?: string
-  status: 'pending' | 'picked' | 'partial'
-}
-
-export interface PickingAlert {
-  id: number
-  order_id: number
-  type: string
-  message: string
-  severity: string
-  created_at: string
-  resolved_at?: string
-}
+// Re-export for convenience
+export type { OrderDetail } from '@/types/api'
 
 /**
  * Hook to fetch single order detail with items and alerts

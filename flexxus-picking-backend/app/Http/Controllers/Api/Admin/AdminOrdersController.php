@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ListOrdersRequest;
 use App\Http\Resources\Admin\AdminOrderDetailResource;
 use App\Http\Resources\Admin\AdminOrderResource;
 use App\Models\PickingOrderProgress;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class AdminOrdersController extends Controller
@@ -14,7 +14,7 @@ class AdminOrdersController extends Controller
     /**
      * Get all orders with optional filters.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(ListOrdersRequest $request): AnonymousResourceCollection
     {
         $query = PickingOrderProgress::query();
 
@@ -37,7 +37,7 @@ class AdminOrdersController extends Controller
         $query->with(['user', 'warehouse']);
 
         // Paginate
-        $perPage = $request->input('per_page', 15);
+        $perPage = $request->integer('per_page', 15);
         $orders = $query->latest('created_at')->paginate($perPage);
 
         return AdminOrderResource::collection($orders);

@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Loader2 } from 'lucide-react'
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'El email es requerido').email('Email inválido'),
+  username: z.string().min(1, 'El usuario es requerido'),
   password: z.string().min(1, 'La contraseña es requerida').min(6, 'La contraseña debe tener al menos 6 caracteres'),
 })
 
@@ -21,7 +21,7 @@ export function LoginPage() {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      username: '',
       password: '',
     },
   })
@@ -44,15 +44,15 @@ export function LoginPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Usuario</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="admin@ejemplo.com"
-                        type="email"
-                        autoComplete="email"
+                        placeholder="nombre.apellido"
+                        type="text"
+                        autoComplete="username"
                         disabled={isLoading}
                         {...field}
                       />

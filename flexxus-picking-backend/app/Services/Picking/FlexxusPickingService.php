@@ -37,7 +37,7 @@ class FlexxusPickingService
 
             $allOrders = $ordersResponse['data'] ?? [];
 
-            $warehouseOrders = array_filter($allOrders, function ($order) use ($warehouse) {
+            $warehouseOrders = array_values(array_filter($allOrders, function ($order) use ($warehouse) {
                 $depotName = trim((string) ($order['DEPOSITO'] ?? ''));
                 $warehouseName = strtoupper(trim($warehouse->name));
 
@@ -48,19 +48,30 @@ class FlexxusPickingService
 
                 // Fallback to code match for backward compatibility
                 return strcasecmp($depotName, trim($warehouse->code)) === 0;
-            });
+            }));
+
+            if (empty($warehouseOrders)) {
+                return [];
+            }
+
+            // Build endpoints for all orders and fetch delivery data concurrently
+            $endpoints = array_map(
+                fn ($order) => '/v2/deliverydata/NP/'.($order['NUMEROCOMPROBANTE'] ?? ''),
+                $warehouseOrders
+            );
+
+            $deliveryResponses = $client->requestMany($endpoints);
 
             $expeditionOrders = [];
 
-            foreach ($warehouseOrders as $order) {
+            foreach ($warehouseOrders as $index => $order) {
                 $orderNumber = $order['NUMEROCOMPROBANTE'] ?? null;
 
                 if (! $orderNumber) {
                     continue;
                 }
 
-                $deliveryData = $client->request('GET', "/v2/deliverydata/NP/{$orderNumber}");
-                $deliveryInfo = $deliveryData['data'][0] ?? [];
+                $deliveryInfo = ($deliveryResponses[$index]['data'][0] ?? []);
 
                 if (($deliveryInfo['CODIGOTIPOENTREGA'] ?? 0) == 1) {
                     $order['delivery_info'] = $deliveryInfo;

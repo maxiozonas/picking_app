@@ -31,7 +31,10 @@ class WarehouseController extends Controller
 
         if ($user->role !== 'empleado') {
             return response()->json([
-                'message' => 'Only employees can have warehouses assigned',
+                'error' => [
+                    'message' => 'Only employees can have warehouses assigned',
+                    'error_code' => 'INVALID_OPERATION',
+                ],
             ], 422);
         }
 
@@ -60,13 +63,19 @@ class WarehouseController extends Controller
 
         if ($user->role !== 'empleado') {
             return response()->json([
-                'message' => 'Only employees can have warehouses modified',
+                'error' => [
+                    'message' => 'Only employees can have warehouses modified',
+                    'error_code' => 'INVALID_OPERATION',
+                ],
             ], 422);
         }
 
         if ($user->warehouse_id === $warehouse->id) {
             return response()->json([
-                'message' => 'Cannot remove primary warehouse. Assign a new warehouse first.',
+                'error' => [
+                    'message' => 'Cannot remove primary warehouse. Assign a new warehouse first.',
+                    'error_code' => 'INVALID_OPERATION',
+                ],
             ], 422);
         }
 

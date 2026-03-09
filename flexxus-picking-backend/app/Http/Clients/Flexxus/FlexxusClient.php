@@ -228,4 +228,47 @@ class FlexxusClient implements FlexxusClientInterface
             ]
         );
     }
+
+    /**
+     * Execute multiple GET requests concurrently using Http::pool().
+     * Returns responses in the same order as the given endpoints array.
+     * Failed individual requests return an empty array instead of throwing.
+     *
+     * @param  string[]  $endpoints  e.g. ['/v2/deliverydata/NP/1234', '/v2/deliverydata/NP/5678']
+     * @return array[]
+     */
+    public function requestMany(array $endpoints): array
+    {
+        if (empty($endpoints)) {
+            return [];
+        }
+
+        $token = Cache::get($this->getTokenCacheKey());
+
+        if (! $token) {
+            $this->authenticate();
+            $token = Cache::get($this->getTokenCacheKey());
+        }
+
+        $baseUrl = $this->baseUrl;
+
+        $responses = Http::pool(function (\Illuminate\Http\Client\Pool $pool) use ($endpoints, $token, $baseUrl) {
+            return array_map(
+                fn (string $endpoint) => $pool
+                    ->withToken($token)
+                    ->timeout(30)
+                    ->get("{$baseUrl}{$endpoint}"),
+                $endpoints
+            );
+        });
+
+        return array_map(function ($response) {
+            // Individual pool responses may be exceptions or failed responses
+            if ($response instanceof \Throwable) {
+                return [];
+            }
+
+            return $response->successful() ? ($response->json() ?? []) : [];
+        }, $responses);
+    }
 }

@@ -43,14 +43,21 @@ export function useAuth() {
     },
   })
 
-  const handleLogout = () => {
-    logout()
-    queryClient.clear()
-    toast({
-      title: 'Sesión cerrada',
-      description: 'Has cerrado sesión exitosamente',
-    })
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      // Invalidate token server-side before clearing local state
+      await api.post('/auth/logout')
+    } catch {
+      // Always clear local state even if server call fails
+    } finally {
+      logout()
+      queryClient.clear()
+      toast({
+        title: 'Sesión cerrada',
+        description: 'Has cerrado sesión exitosamente',
+      })
+      navigate('/login')
+    }
   }
 
   return {

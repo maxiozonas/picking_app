@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\Picking\OrderNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Picking\GetStockForItemRequest;
 use App\Http\Resources\PickingStockResource;
@@ -32,11 +33,10 @@ class PickingStockController extends Controller
         );
 
         if (! $stock) {
-            return response()->json([
-                'error' => [
-                    'message' => "Item {$productCode} not found in order {$orderNumber}",
-                ],
-            ], 404);
+            throw new OrderNotFoundException($productCode, [
+                'order_number' => $orderNumber,
+                'type'         => 'item',
+            ]);
         }
 
         return response()->json([

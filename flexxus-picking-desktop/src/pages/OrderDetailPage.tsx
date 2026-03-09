@@ -87,12 +87,12 @@ export function OrderDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <EmployeeAssignment employee={order.user} />
 
-        <OrderAlerts alerts={(order as any).alerts || []} />
+        <OrderAlerts alerts={order.alerts || []} />
       </div>
 
       <div>
         <h2 className="text-xl font-semibold mb-4">Items del Pedido</h2>
-        <OrderItemsTable items={(order as any).items || []} />
+        <OrderItemsTable items={order.items || []} />
       </div>
     </div>
   )

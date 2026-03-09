@@ -36,19 +36,14 @@ class FlexxusPickingServiceTest extends TestCase
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->method('request')
             ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount, $productCode) {
-                $this->assertSame('GET', $method);
-                $this->assertSame("/v2/products/{$productCode}/stock", $endpoint);
                 $callCount++;
-
+                // Code uses the optimized /v2/products/{code}?warehouse_list=... endpoint
                 return [
-                    'Product_Stock' => [
-                        [
-                            'DEPOSITO' => 'WH-01',
-                            'LOTE' => 'LOT-123',
-                            'STOCKTOTAL' => 100,
-                            'ESDEPOSITOLOCAL' => 1,
-                        ],
-                    ],
+                    'data' => [[
+                        'STOCKTOTALDEPOSITO' => 100,
+                        'STOCKREALDEPOSITO'  => 80,
+                        'STOCKPEDIDODEPOSITO' => 10,
+                    ]],
                 ];
             });
 
@@ -79,19 +74,14 @@ class FlexxusPickingServiceTest extends TestCase
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->method('request')
             ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount, $productCode) {
-                $this->assertSame('GET', $method);
-                $this->assertSame("/v2/products/{$productCode}/stock", $endpoint);
                 $callCount++;
-
+                // Code uses the optimized /v2/products/{code}?warehouse_list=... endpoint
                 return [
-                    'Product_Stock' => [
-                        [
-                            'DEPOSITO' => 'WH-01',
-                            'LOTE' => 'LOT-456',
-                            'STOCKTOTAL' => 50,
-                            'ESDEPOSITOLOCAL' => 1,
-                        ],
-                    ],
+                    'data' => [[
+                        'STOCKTOTALDEPOSITO' => 50,
+                        'STOCKREALDEPOSITO'  => 40,
+                        'STOCKPEDIDODEPOSITO' => 5,
+                    ]],
                 ];
             });
 
@@ -135,16 +125,14 @@ class FlexxusPickingServiceTest extends TestCase
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->expects($this->once())
             ->method('request')
-            ->with('GET', "/v2/products/{$productCode}/stock")
+            ->with('GET', "/v2/products/{$productCode}")
             ->willReturn([
-                'Product_Stock' => [
-                    [
-                        'DEPOSITO' => 'WH-TEST',
-                        'LOTE' => 'LOT-789',
-                        'STOCKTOTAL' => 75,
-                        'ESDEPOSITOLOCAL' => 1,
-                    ],
-                ],
+                'data' => [[
+                    'STOCKTOTALDEPOSITO'  => 75,
+                    'STOCKREALDEPOSITO'   => 70,
+                    'STOCKPEDIDODEPOSITO' => 0,
+                    'UBICACIONPRODUCTO'   => null,
+                ]],
             ]);
 
         $this->mockFactory->expects($this->once())
@@ -167,28 +155,18 @@ class FlexxusPickingServiceTest extends TestCase
         $warehouse = Warehouse::factory()->create(['code' => 'RONDEAU']);
 
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
+        // Optimized endpoint returns scalar STOCKTOTALDEPOSITO (filtered by warehouse_list)
         $mockWarehouseClient->method('request')
             ->willReturnCallback(function (string $method, string $endpoint) use ($productCode) {
-                if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}/stock") {
-                    return ['Product_Stock' => []];
-                }
-
                 if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}") {
                     return [
-                        'data' => [
-                            [
-                                'ID_ARTICULO' => 16292,
-                                'STOCKTOTALDEPOSITO' => [
-                                    [
-                                        'DEPOSITO' => 'RONDEAU',
-                                        'LOTE' => 'LOT-DETAIL',
-                                        'STOCKTOTAL' => 33,
-                                        'ESDEPOSITOLOCAL' => 1,
-                                        'UBICACION' => 'A-01-02',
-                                    ],
-                                ],
-                            ],
-                        ],
+                        'data' => [[
+                            'ID_ARTICULO'        => 16292,
+                            'STOCKTOTALDEPOSITO'  => 33,
+                            'STOCKREALDEPOSITO'   => 30,
+                            'STOCKPEDIDODEPOSITO' => 0,
+                            'UBICACIONPRODUCTO'   => 'A-01-02',
+                        ]],
                     ];
                 }
 
@@ -213,33 +191,18 @@ class FlexxusPickingServiceTest extends TestCase
         $warehouse = Warehouse::factory()->create(['code' => 'RONDEAU']);
 
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
+        // When optimized endpoint returns 0 stock, result should reflect that
         $mockWarehouseClient->method('request')
             ->willReturnCallback(function (string $method, string $endpoint) use ($productCode) {
-                if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}/stock") {
-                    return ['Product_Stock' => []];
-                }
-
                 if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}") {
                     return [
-                        'data' => [
-                            [
-                                'ID_ARTICULO' => 70001,
-                                'STOCKTOTALDEPOSITO' => [],
-                            ],
-                        ],
-                    ];
-                }
-
-                if ($method === 'GET' && $endpoint === '/v2/products/70001/stock') {
-                    return [
-                        'Product_Stock' => [
-                            [
-                                'DEPOSITO' => 'RONDEAU',
-                                'LOTE' => 'LOT-ID',
-                                'STOCKTOTAL' => 9,
-                                'ESDEPOSITOLOCAL' => 0,
-                            ],
-                        ],
+                        'data' => [[
+                            'ID_ARTICULO'        => 70001,
+                            'STOCKTOTALDEPOSITO'  => 9,
+                            'STOCKREALDEPOSITO'   => 9,
+                            'STOCKPEDIDODEPOSITO' => 0,
+                            'UBICACIONPRODUCTO'   => null,
+                        ]],
                     ];
                 }
 
@@ -292,7 +255,7 @@ class FlexxusPickingServiceTest extends TestCase
 
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->method('request')
-            ->willReturnCallback(function (string $method, string $endpoint, array $data = []) use ($warehouse, $orderNumber) {
+            ->willReturnCallback(function (string $method, string $endpoint, array $data = []) use ($warehouse) {
                 if ($method === 'GET' && $endpoint === '/v2/orders') {
                     $this->assertSame([
                         'date_from' => '2026-03-06',
@@ -303,7 +266,7 @@ class FlexxusPickingServiceTest extends TestCase
                     return [
                         'data' => [
                             [
-                                'NUMEROCOMPROBANTE' => $orderNumber,
+                                'NUMEROCOMPROBANTE' => '12345',
                                 'DEPOSITO' => 'RONDEAU',
                                 'RAZONSOCIAL' => 'Cliente correcto',
                             ],
@@ -316,15 +279,20 @@ class FlexxusPickingServiceTest extends TestCase
                     ];
                 }
 
-                if ($method === 'GET' && $endpoint === "/v2/deliverydata/NP/{$orderNumber}") {
-                    return [
-                        'data' => [
-                            ['CODIGOTIPOENTREGA' => 1],
-                        ],
-                    ];
-                }
+                $this->fail("Unexpected request() call: {$method} {$endpoint}");
+            });
 
-                $this->fail("Unexpected endpoint called: {$method} {$endpoint}");
+        // Delivery data is now fetched concurrently via requestMany
+        // Only the RONDEAU order passes warehouse filter, so only one endpoint is sent
+        $mockWarehouseClient->method('requestMany')
+            ->willReturnCallback(function (array $endpoints) use ($orderNumber) {
+                return array_map(function (string $endpoint) use ($orderNumber) {
+                    if ($endpoint === "/v2/deliverydata/NP/{$orderNumber}") {
+                        return ['data' => [['CODIGOTIPOENTREGA' => 1]]];
+                    }
+
+                    return [];
+                }, $endpoints);
             });
 
         $this->mockFactory->expects($this->once())

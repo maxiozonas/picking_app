@@ -34,10 +34,11 @@ export interface PickingOrderItem {
   order_id: number
   product_code: string
   product_name: string
-  quantity: number
-  picked_quantity: number
+  quantity_required: number
+  quantity_picked: number
+  quantity_requested?: number
   location?: string
-  status: 'pending' | 'picked' | 'partial'
+  status: 'pending' | 'in_progress' | 'completed'
 }
 
 export interface PickingAlert {
@@ -50,8 +51,17 @@ export interface PickingAlert {
   resolved_at?: string
 }
 
-export type AlertType = 'stock_issue' | 'product_not_found' | 'quantity_mismatch'
+export type AlertType = 'stock_issue' | 'product_not_found' | 'quantity_mismatch' | 'over_pick_attempt' | string
 export type AlertSeverity = 'warning' | 'error' | 'info'
+
+export interface OrderDetail extends PickingOrder {
+  customer_name?: string
+  total_items: number
+  picked_items: number
+  completed_percentage: number
+  items: PickingOrderItem[]
+  alerts: PickingAlert[]
+}
 
 export interface DashboardStats {
   total_orders: number
@@ -80,7 +90,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
 }
 
