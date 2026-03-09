@@ -44,3 +44,4 @@ flexxus-picking-mobile/node_modules/
 *.pem
 coverage-report.md
 
+dist
