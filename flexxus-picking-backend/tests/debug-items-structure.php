@@ -23,17 +23,17 @@ try {
 
     $items = $response['data']['DETALLE'] ?? [];
 
-    echo "📦 Total items: ".count($items)."\n\n";
+    echo '📦 Total items: '.count($items)."\n\n";
 
     foreach ($items as $i => $item) {
-        echo "📦 ITEM ".($i+1).":\n";
+        echo '📦 ITEM '.($i + 1).":\n";
         echo str_repeat('-', 70)."\n";
 
         foreach ($item as $key => $value) {
             if (is_string($value) && strlen($value) > 50) {
                 $value = substr($value, 0, 50).'...';
             }
-            if (!is_array($value)) {
+            if (! is_array($value)) {
                 echo "  {$key}: {$value}\n";
             }
         }

@@ -39,7 +39,7 @@ try {
     $byWarehouse = [];
     foreach ($allOrders as $order) {
         $depot = $order['DEPOSITO'] ?? 'UNKNOWN';
-        if (!isset($byWarehouse[$depot])) {
+        if (! isset($byWarehouse[$depot])) {
             $byWarehouse[$depot] = [];
         }
         $byWarehouse[$depot][] = $order;
@@ -60,9 +60,9 @@ try {
             $isExpedicion = ($tipoEntrega == 1);
 
             echo "  - NP {$order['NUMEROCOMPROBANTE']} - {$order['RAZONSOCIAL']}\n";
-            echo "    Entregar: ".($order['ENTREGAR'] == 0 ? 'No' : 'Sí')."\n";
-            echo "    Tipo entrega: ".($isExpedicion ? 'EXPEDICION ✅' : 'Otro')."\n";
-            echo "    Total: $".number_format($order['TOTAL'], 2)."\n";
+            echo '    Entregar: '.($order['ENTREGAR'] == 0 ? 'No' : 'Sí')."\n";
+            echo '    Tipo entrega: '.($isExpedicion ? 'EXPEDICION ✅' : 'Otro')."\n";
+            echo '    Total: $'.number_format($order['TOTAL'], 2)."\n";
         }
     }
 

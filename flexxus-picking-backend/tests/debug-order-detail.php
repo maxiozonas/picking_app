@@ -34,12 +34,12 @@ try {
 
     if (isset($response['data'])) {
         $data = $response['data'];
-        echo "Keys en data: ".implode(', ', array_keys($data))."\n\n";
+        echo 'Keys en data: '.implode(', ', array_keys($data))."\n\n";
 
         if (isset($data['DETALLE'])) {
-            echo "Items en DETALLE: ".count($data['DETALLE'])."\n";
+            echo 'Items en DETALLE: '.count($data['DETALLE'])."\n";
             foreach ($data['DETALLE'] as $i => $item) {
-                echo "  Item ".($i+1).": ".($item['DESCRIPCION'] ?? 'N/A')."\n";
+                echo '  Item '.($i + 1).': '.($item['DESCRIPCION'] ?? 'N/A')."\n";
             }
         } else {
             echo "⚠️  No hay DETALLE en la respuesta\n";

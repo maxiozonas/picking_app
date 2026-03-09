@@ -42,15 +42,15 @@ try {
 
         echo "\n🔍 CAMPO DEPOSITO:\n";
         echo str_repeat('-', 70)."\n";
-        echo "  DEPOSITO: ".($order['DEPOSITO'] ?? 'NOT SET')."\n";
+        echo '  DEPOSITO: '.($order['DEPOSITO'] ?? 'NOT SET')."\n";
 
         echo "\n🔍 COMPARACION CON WAREHOUSE 2:\n";
         echo str_repeat('-', 70)."\n";
         $warehouse = \App\Models\Warehouse::find(2);
         echo "  Warehouse code: {$warehouse->code}\n";
         echo "  Warehouse name: {$warehouse->name}\n";
-        echo "  Order DEPOSITO == code? ".(($order['DEPOSITO'] == $warehouse->code) ? 'YES' : 'NO')."\n";
-        echo "  Order DEPOSITO == name? ".(($order['DEPOSITO'] == $warehouse->name) ? 'YES' : 'NO')."\n";
+        echo '  Order DEPOSITO == code? '.(($order['DEPOSITO'] == $warehouse->code) ? 'YES' : 'NO')."\n";
+        echo '  Order DEPOSITO == name? '.(($order['DEPOSITO'] == $warehouse->name) ? 'YES' : 'NO')."\n";
     }
 
     echo "\n✅ DEBUG COMPLETADO\n\n";
