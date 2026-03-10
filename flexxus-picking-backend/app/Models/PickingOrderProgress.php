@@ -52,6 +52,11 @@ class PickingOrderProgress extends Model
         return $this->hasMany(PickingAlert::class, 'order_number', 'order_number');
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(PickingOrderEvent::class, 'order_number', 'order_number');
+    }
+
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
