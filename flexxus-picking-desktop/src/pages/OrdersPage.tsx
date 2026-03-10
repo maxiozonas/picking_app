@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { useOrders } from '@/hooks/use-orders'
+import { usePendingOrders } from '@/hooks/use-pending-orders'
 import { OrdersTable } from '@/components/orders/OrdersTable'
 import { OrderFilters } from '@/components/orders/OrderFilters'
+import { WarehouseSelector } from '@/components/dashboard/WarehouseSelector'
 import { OrderStatus } from '@/types/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
@@ -21,14 +22,14 @@ export function OrdersPage() {
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  const { data, isLoading, isError, error } = useOrders({
+  const { data, isLoading, isError, error } = usePendingOrders({
     search: debouncedSearch || undefined,
-    status: statusFilter === 'all' ? undefined : statusFilter,
+    status: statusFilter,
     page: currentPage,
   })
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['orders'] })
+    queryClient.invalidateQueries({ queryKey: ['pending-orders'] })
   }
 
   if (isError) {
@@ -72,12 +73,17 @@ export function OrdersPage() {
         )}
       </div>
 
-      <OrderFilters
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-      />
+      <div className="flex items-end gap-4">
+        <WarehouseSelector />
+        <div className="flex-1">
+          <OrderFilters
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+          />
+        </div>
+      </div>
 
       <OrdersTable
         orders={data?.data || []}

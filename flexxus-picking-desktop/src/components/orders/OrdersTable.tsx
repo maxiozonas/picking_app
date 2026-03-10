@@ -1,6 +1,7 @@
 import { OrderStatusBadge } from './OrderStatusBadge'
 import { OrderActions } from './OrderActions'
 import { PickingOrder } from '@/types/api'
+import { User, Clock } from 'lucide-react'
 
 interface OrdersTableProps {
   orders: PickingOrder[]
@@ -74,7 +75,7 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
           </thead>
           <tbody className="divide-y divide-border">
             {orders.map((order) => (
-              <tr key={order.id} className="hover:bg-surface-elevated/60 transition-colors">
+              <tr key={order.order_number} className="hover:bg-surface-elevated/60 transition-colors">
                 <td className="px-4 py-3">
                   <span className="font-mono text-sm font-medium text-foreground">
                     {order.order_number}
@@ -90,10 +91,20 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
                   <OrderStatusBadge status={order.status} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {order.assigned_to?.name ?? <span className="italic opacity-50">—</span>}
+                  {order.assigned_to?.name ?? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
+                      <User className="h-3 w-3" />
+                      Sin asignar
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
-                  {order.started_at ? formatDateRelative(order.started_at) : '—'}
+                  {order.started_at ? formatDateRelative(order.started_at) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
+                      <Clock className="h-3 w-3" />
+                      Sin iniciar
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <OrderActions orderNumber={order.order_number} onRefresh={onRefresh} />

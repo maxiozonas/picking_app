@@ -1,82 +1,141 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useInventory, useStockSearch } from '@/hooks/use-inventory'
 import { useQueryClient } from '@tanstack/react-query'
-import { Search, RefreshCw, Package, Warehouse, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react'
+import { Search, RefreshCw, Package, AlertTriangle, CheckCircle, TrendingDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { InventoryItem } from '@/types/api'
 
-function stockLevelClass(total: number, ordersUsing: number): string {
-  if (total === 0) return 'text-red-400'
-  if (ordersUsing > 0 && total < ordersUsing * 2) return 'text-amber-400'
-  return 'text-emerald-400'
+// ─── Stock status helpers ─────────────────────────────────────────────────────
+
+type StockStatus = 'ok' | 'low' | 'out'
+
+function getStockStatus(item: InventoryItem): StockStatus {
+  const total = Math.max(0, item.stock_total)
+  if (total === 0) return 'out'
+  if (item.orders_using > 0 && total < item.orders_using * 2) return 'low'
+  return 'ok'
 }
 
-function StockBar({ value, max }: { value: number; max: number }) {
+const stockNumClass: Record<StockStatus, string> = {
+  ok: 'text-emerald-400',
+  low: 'text-amber-400',
+  out: 'text-red-400',
+}
+
+// Tiny horizontal bar for each warehouse chip
+function MiniBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const color = pct === 0 ? 'bg-red-500' : pct < 50 ? 'bg-amber-400' : 'bg-emerald-500'
   return (
-    <div className="h-1.5 w-20 rounded-full bg-surface-elevated overflow-hidden">
-      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+    <div className="h-1 w-14 rounded-full bg-surface-elevated overflow-hidden">
+      <div className={cn('h-full rounded-full', color)} style={{ width: `${pct}%` }} />
     </div>
   )
 }
 
-interface InventoryRowProps {
-  item: InventoryItem
+// ─── Grouping logic ───────────────────────────────────────────────────────────
+
+interface GroupedProduct {
+  product_code: string
+  description: string
+  warehouses: InventoryItem[]
+  worstStatus: StockStatus
+  totalOrdersUsing: number
 }
 
-function InventoryRow({ item }: InventoryRowProps) {
-  const levelClass = stockLevelClass(item.stock_total, item.orders_using)
-  const isLow = item.stock_total === 0 || (item.orders_using > 0 && item.stock_total < item.orders_using * 2)
+const STATUS_RANK: Record<StockStatus, number> = { ok: 0, low: 1, out: 2 }
+
+function groupByProduct(items: InventoryItem[]): GroupedProduct[] {
+  const map = new Map<string, GroupedProduct>()
+
+  for (const item of items) {
+    const existing = map.get(item.product_code)
+    const status = getStockStatus(item)
+
+    if (existing) {
+      existing.warehouses.push(item)
+      if (STATUS_RANK[status] > STATUS_RANK[existing.worstStatus]) {
+        existing.worstStatus = status
+      }
+      existing.totalOrdersUsing += item.orders_using
+    } else {
+      map.set(item.product_code, {
+        product_code: item.product_code,
+        description: item.description,
+        warehouses: [item],
+        worstStatus: status,
+        totalOrdersUsing: item.orders_using,
+      })
+    }
+  }
+
+  return Array.from(map.values())
+}
+
+// ─── Grouped row component ────────────────────────────────────────────────────
+
+interface WarehouseColumn {
+  code: string
+  name: string
+}
+
+function GroupedInventoryRow({
+  group,
+  warehouseColumns,
+}: {
+  group: GroupedProduct
+  warehouseColumns: WarehouseColumn[]
+}) {
+  const byWarehouse = new Map(group.warehouses.map((w) => [w.warehouse_code, w]))
 
   return (
-    <tr className="border-b border-border hover:bg-surface-elevated/50 transition-colors group">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {isLow ? (
-            <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-          ) : (
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-          )}
-          <span className="font-mono text-sm font-medium text-foreground">{item.product_code}</span>
-        </div>
+    <tr className="border-b border-border hover:bg-surface-elevated/50 transition-colors">
+      {/* Code — no status dot */}
+      <td className="px-4 py-3 align-middle">
+        <span className="font-mono text-sm font-medium text-foreground">{group.product_code}</span>
       </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs">
-        <span className="line-clamp-2">{item.description || '—'}</span>
+
+      {/* Description */}
+      <td className="px-4 py-3 align-middle">
+        <span className="text-sm text-muted-foreground line-clamp-2">{group.description || '—'}</span>
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Warehouse className="h-3.5 w-3.5 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">{item.warehouse_name}</p>
-            <p className="text-xs text-muted-foreground font-mono">{item.warehouse_code}</p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex flex-col items-end gap-1">
-          <span className={`font-display text-lg font-bold tabular-nums ${levelClass}`}>
-            {item.stock_total}
-          </span>
-          <StockBar value={item.stock_total} max={Math.max(item.stock_total, item.orders_using * 3, 10)} />
-        </div>
-      </td>
-      <td className="px-4 py-3 text-right tabular-nums text-sm text-muted-foreground">
-        {item.stock_real}
-      </td>
-      <td className="px-4 py-3 text-center">
-        {item.location ? (
-          <span className="inline-flex items-center rounded border border-border bg-surface-elevated px-2 py-0.5 text-xs font-mono text-muted-foreground">
-            {item.location}
-          </span>
-        ) : (
-          <span className="text-muted-foreground text-xs">—</span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-center">
-        {item.orders_using > 0 ? (
+
+      {/* One TD per warehouse */}
+      {warehouseColumns.map(({ code }) => {
+        const item = byWarehouse.get(code)
+        if (!item) {
+          return (
+            <td key={code} className="px-4 py-3 text-center align-middle">
+              <span className="text-muted-foreground text-xs">—</span>
+            </td>
+          )
+        }
+        const total = Math.max(0, item.stock_total)
+        const st = getStockStatus(item)
+        const maxVal = Math.max(total, item.orders_using * 3, 10)
+        return (
+          <td key={code} className="px-4 py-3 align-middle">
+            <div className="flex flex-col items-center gap-1">
+              <span className={cn('font-display text-base font-bold tabular-nums leading-none', stockNumClass[st])}>
+                {total}
+              </span>
+              <MiniBar value={total} max={maxVal} />
+              {item.location && (
+                <span className="font-mono text-[10px] text-muted-foreground border border-border rounded px-1">
+                  {item.location}
+                </span>
+              )}
+            </div>
+          </td>
+        )
+      })}
+
+      {/* Orders using (sum across warehouses) */}
+      <td className="px-4 py-3 text-center align-middle">
+        {group.totalOrdersUsing > 0 ? (
           <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 text-xs font-medium">
             <Package className="h-3 w-3" />
-            {item.orders_using}
+            {group.totalOrdersUsing}
           </span>
         ) : (
           <span className="text-muted-foreground text-xs">0</span>
@@ -119,22 +178,32 @@ export function InventoryPage() {
   const isError = isSearching ? searchQuery.isError : listQuery.isError
   const error = isSearching ? searchQuery.error : listQuery.error
 
-  const items: InventoryItem[] = isSearching
+  const rawItems: InventoryItem[] = isSearching
     ? (searchQuery.data ?? [])
     : (listQuery.data?.data ?? [])
 
   const meta = !isSearching ? listQuery.data?.meta : undefined
 
+  // Group flat rows by product_code
+  const groups = useMemo(() => groupByProduct(rawItems), [rawItems])
+
+  // Unique warehouses in appearance order — drives dynamic columns
+  const warehouseColumns = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const item of rawItems) {
+      if (!seen.has(item.warehouse_code)) seen.set(item.warehouse_code, item.warehouse_name)
+    }
+    return Array.from(seen.entries()).map(([code, name]) => ({ code, name }))
+  }, [rawItems])
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['inventory'] })
   }
 
-  // Summary stats from list
-  const outOfStock = items.filter((i) => i.stock_total === 0).length
-  const lowStock = items.filter(
-    (i) => i.stock_total > 0 && i.orders_using > 0 && i.stock_total < i.orders_using * 2
-  ).length
-  const totalProducts = meta?.total ?? items.length
+  // Summary stats — unique product groups
+  const outOfStock = groups.filter((g) => g.worstStatus === 'out').length
+  const lowStock = groups.filter((g) => g.worstStatus === 'low').length
+  const totalProducts = isSearching ? groups.length : (meta?.total ?? rawItems.length)
 
   return (
     <div className="space-y-6">
@@ -261,16 +330,16 @@ export function InventoryPage() {
 
         {isLoading ? (
           <div className="space-y-px">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-4 py-3">
                 <div className="h-4 w-24 animate-pulse rounded bg-surface-elevated" />
                 <div className="h-4 flex-1 animate-pulse rounded bg-surface-elevated" />
-                <div className="h-4 w-20 animate-pulse rounded bg-surface-elevated" />
-                <div className="h-4 w-12 animate-pulse rounded bg-surface-elevated" />
+                <div className="h-12 flex-1 animate-pulse rounded bg-surface-elevated" />
+                <div className="h-4 w-10 animate-pulse rounded bg-surface-elevated" />
               </div>
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <CheckCircle className="mb-3 h-8 w-8 opacity-40" />
             <p className="font-medium">
@@ -288,26 +357,22 @@ export function InventoryPage() {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Depósito
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Stock Total
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Stock Real
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Ubicación
-                  </th>
+                  {warehouseColumns.map(({ code, name }) => (
+                    <th key={code} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span>{name}</span>
+                        <span className="font-mono text-[10px] normal-case tracking-normal text-muted-foreground/60">{code}</span>
+                      </div>
+                    </th>
+                  ))}
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     En Pedidos
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
-                  <InventoryRow key={`${item.product_code}-${item.warehouse_code}-${idx}`} item={item} />
+                {groups.map((group) => (
+                  <GroupedInventoryRow key={group.product_code} group={group} warehouseColumns={warehouseColumns} />
                 ))}
               </tbody>
             </table>
@@ -318,7 +383,7 @@ export function InventoryPage() {
         {meta && meta.last_page > 1 && (
           <div className="flex items-center justify-between border-t border-border px-4 py-3">
             <p className="text-sm text-muted-foreground">
-              {items.length} de {meta.total} productos
+              {groups.length} de {meta.total} productos
             </p>
             <div className="flex items-center gap-2">
               <button

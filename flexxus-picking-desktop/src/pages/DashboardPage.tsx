@@ -60,7 +60,7 @@ export function DashboardPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-end gap-4">
         <WarehouseSelector />
         <DateRangePicker
           dateFrom={dateFrom}

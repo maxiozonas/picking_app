@@ -10,6 +10,7 @@ import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { Warehouse } from '@/types/api'
+import { cn } from '@/lib/utils'
 
 interface WarehouseSelectorProps {
   className?: string
@@ -39,7 +40,10 @@ export function WarehouseSelector({ className }: WarehouseSelectorProps) {
   })
 
   return (
-    <div className={className}>
+    <div className={cn('flex flex-col gap-2', className)}>
+      <label className="text-xs text-muted-foreground">
+        Depósito
+      </label>
       <Select
         value={selectedWarehouseId?.toString() || 'all'}
         onValueChange={(value) => {

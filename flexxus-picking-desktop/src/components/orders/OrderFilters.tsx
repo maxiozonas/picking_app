@@ -13,6 +13,7 @@ const statusOptions: Array<{ value: OrderStatus | 'all'; label: string }> = [
   { value: 'pending', label: 'Pendiente' },
   { value: 'in_progress', label: 'En Proceso' },
   { value: 'completed', label: 'Completado' },
+  { value: 'has_issues', label: 'Con Alertas' },
   { value: 'cancelled', label: 'Cancelado' },
 ]
 
