@@ -7,6 +7,7 @@ use App\Exceptions\Picking\InvalidOrderStateException;
 use App\Exceptions\Picking\OrderNotFoundException;
 use App\Exceptions\Picking\UnauthorizedOperationException;
 use App\Models\PickingAlert;
+use App\Models\PickingOrderEvent;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -165,6 +166,20 @@ class PickingService implements PickingServiceInterface
             'severity' => $a->severity,
         ])->toArray() : [];
 
+        $events = $progress ? $progress->events()
+            ->where('warehouse_id', $context->warehouseId)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn ($e) => [
+                'id' => $e->id,
+                'event_type' => $e->event_type,
+                'product_code' => $e->product_code,
+                'quantity' => $e->quantity,
+                'message' => $e->message,
+                'user' => $e->user_id ? ['id' => $e->user->id, 'name' => $e->user->name] : null,
+                'created_at' => $e->created_at->toIso8601String(),
+            ])->toArray() : [];
+
         $totalItems = count($items);
         $pickedItems = collect($items)->filter(fn ($i) => $i['status'] === 'completed')->count();
         $completedPercentage = $totalItems > 0 ? round(($pickedItems / $totalItems) * 100, 2) : 0;
@@ -191,6 +206,7 @@ class PickingService implements PickingServiceInterface
             'completed_percentage' => $completedPercentage,
             'items' => $items,
             'alerts' => $alerts,
+            'events' => $events,
         ];
     }
 
@@ -260,6 +276,14 @@ class PickingService implements PickingServiceInterface
 
         // Pre-fetch stock for all items in the order
         $this->stockCacheService->prefetchStockForOrder($progress);
+
+        PickingOrderEvent::create([
+            'order_number' => $canonicalOrderNumber,
+            'warehouse_id' => $context->warehouseId,
+            'user_id' => $context->userId,
+            'event_type' => 'order_started',
+            'message' => 'Pedido iniciado',
+        ]);
 
         return $progress->load('items');
     }
@@ -334,6 +358,21 @@ class PickingService implements PickingServiceInterface
             }
 
             $item->save();
+
+            $eventType = $item->status === 'completed' ? 'item_completed' : 'item_picked';
+            $eventMessage = $item->status === 'completed'
+                ? "Item {$productCode} completado ({$item->quantity_picked}/{$item->quantity_required} unidades)"
+                : "Pickeadas {$quantity} unidades de {$productCode} ({$item->quantity_picked}/{$item->quantity_required})";
+
+            PickingOrderEvent::create([
+                'order_number' => $canonicalOrderNumber,
+                'warehouse_id' => $context->warehouseId,
+                'user_id' => $userId,
+                'event_type' => $eventType,
+                'product_code' => $productCode,
+                'quantity' => $quantity,
+                'message' => $eventMessage,
+            ]);
 
             $latestValidation = $this->stockValidationService->getLatestValidation($orderNumber, $productCode);
 
@@ -420,6 +459,14 @@ class PickingService implements PickingServiceInterface
             $progress->status = 'completed';
             $progress->completed_at = now();
             $progress->save();
+
+            PickingOrderEvent::create([
+                'order_number' => $canonicalOrderNumber,
+                'warehouse_id' => $context->warehouseId,
+                'user_id' => $userId,
+                'event_type' => 'order_completed',
+                'message' => 'Pedido completado',
+            ]);
 
             return $progress->fresh();
         });
