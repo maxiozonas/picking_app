@@ -1,5 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { User } from 'lucide-react'
 
 interface EmployeeAssignmentProps {
@@ -11,53 +9,40 @@ interface EmployeeAssignmentProps {
 }
 
 export function EmployeeAssignment({ employee }: EmployeeAssignmentProps) {
-  if (!employee) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Empleado Asignado
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <User className="h-5 w-5" />
-            <span>Sin asignar</span>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(' ')
       .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)
-  }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Empleado Asignado
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="rounded-lg border border-border bg-surface p-5">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Empleado Asignado
+      </p>
+
+      {employee ? (
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>{getInitials(employee.name)}</AvatarFallback>
-          </Avatar>
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-primary/10 text-sm font-bold text-primary">
+            {getInitials(employee.name)}
+          </div>
           <div>
-            <p className="font-medium">{employee.name}</p>
+            <p className="font-medium text-foreground">{employee.name}</p>
             {employee.email && (
-              <p className="text-sm text-muted-foreground">{employee.email}</p>
+              <p className="text-xs text-muted-foreground">{employee.email}</p>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      ) : (
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-border">
+            <User className="h-4 w-4" />
+          </div>
+          <span className="text-sm">Sin asignar</span>
+        </div>
+      )}
+    </div>
   )
 }

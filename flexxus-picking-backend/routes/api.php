@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminInventoryController;
 use App\Http\Controllers\Api\Admin\AdminOrdersController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\WarehouseController;
@@ -29,6 +30,10 @@ Route::middleware('auth:sanctum', 'role.admin')->prefix('admin')->group(function
     // Admin orders management
     Route::get('/orders', [AdminOrdersController::class, 'index']);
     Route::get('/orders/{order_number}', [AdminOrdersController::class, 'show']);
+
+    // Inventory / Stock
+    Route::get('/inventory', [AdminInventoryController::class, 'index']);
+    Route::get('/inventory/search', [AdminInventoryController::class, 'search']);
 
     // User CRUD
     Route::apiResource('users', UserController::class);

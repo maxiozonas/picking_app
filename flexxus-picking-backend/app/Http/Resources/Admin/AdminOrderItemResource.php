@@ -19,11 +19,11 @@ class AdminOrderItemResource extends JsonResource
         return [
             'id' => $item->id,
             'product_code' => $item->product_code,
-            'description' => $item->description,
-            'quantity' => $item->quantity,
-            'picked_quantity' => $item->picked_quantity,
-            'lot' => $item->lot,
-            'location' => $item->location,
+            'description' => $item->description ?? '',
+            'quantity' => $item->quantity_required ?? $item->quantity_requested ?? 0,
+            'picked_quantity' => $item->quantity_picked ?? 0,
+            'lot' => $item->lot ?? null,
+            'location' => $item->location ?? null,
             'status' => $item->status,
         ];
     }

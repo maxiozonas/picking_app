@@ -1,12 +1,3 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent } from '@/components/ui/card'
 import { OrderStatusBadge } from './OrderStatusBadge'
 import { OrderActions } from './OrderActions'
 import { PickingOrder } from '@/types/api'
@@ -41,79 +32,77 @@ function formatDateRelative(dateString: string): string {
 export function OrdersTable({ orders, onRefresh, isLoading = false, className }: OrdersTableProps) {
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="h-12 w-32 animate-pulse rounded bg-muted" />
-                <div className="h-12 flex-1 animate-pulse rounded bg-muted" />
-                <div className="h-12 w-24 animate-pulse rounded bg-muted" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-border bg-surface overflow-hidden">
+        <div className="space-y-px">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-0">
+              <div className="h-4 w-28 animate-pulse rounded bg-surface-elevated" />
+              <div className="h-4 flex-1 animate-pulse rounded bg-surface-elevated" />
+              <div className="h-5 w-20 animate-pulse rounded bg-surface-elevated" />
+              <div className="h-4 w-20 animate-pulse rounded bg-surface-elevated" />
+            </div>
+          ))}
+        </div>
+      </div>
     )
   }
 
   if (orders.length === 0) {
     return (
-      <Card className={className}>
-        <CardContent className="flex flex-col items-center justify-center p-12">
-          <p className="text-lg font-medium text-muted-foreground">No se encontraron pedidos</p>
-          <p className="text-sm text-muted-foreground">
-            Intenta ajustar los filtros de búsqueda
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-muted-foreground">
+        <p className="font-medium">No se encontraron pedidos</p>
+        <p className="mt-1 text-sm">Intenta ajustar los filtros de búsqueda</p>
+      </div>
     )
   }
 
   return (
-    <Card className={className}>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Depósito</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Empleado</TableHead>
-                <TableHead>Inicio</TableHead>
-                <TableHead className="w-24 text-center">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono text-sm font-medium">
-                    {order.order_number}
-                  </TableCell>
-                  <TableCell>{order.customer}</TableCell>
-                  <TableCell>
-                    {order.warehouse?.name || `Depósito ${order.warehouse_id}`}
-                  </TableCell>
-                  <TableCell>
-                    <OrderStatusBadge status={order.status} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {order.user?.name ?? '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {order.started_at ? formatDateRelative(order.started_at) : '-'}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <OrderActions orderNumber={order.order_number} onRefresh={onRefresh} />
-                  </TableCell>
-                </TableRow>
+    <div className={`rounded-lg border border-border bg-surface overflow-hidden ${className ?? ''}`}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-border">
+              {['Número', 'Cliente', 'Depósito', 'Estado', 'Empleado', 'Inicio', ''].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {h}
+                </th>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {orders.map((order) => (
+              <tr key={order.id} className="hover:bg-surface-elevated/60 transition-colors">
+                <td className="px-4 py-3">
+                  <span className="font-mono text-sm font-medium text-foreground">
+                    {order.order_number}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {order.customer ?? <span className="italic opacity-50">—</span>}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {order.warehouse?.name || `Depósito ${order.warehouse_id}`}
+                </td>
+                <td className="px-4 py-3">
+                  <OrderStatusBadge status={order.status} />
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {order.assigned_to?.name ?? <span className="italic opacity-50">—</span>}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
+                  {order.started_at ? formatDateRelative(order.started_at) : '—'}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <OrderActions orderNumber={order.order_number} onRefresh={onRefresh} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }

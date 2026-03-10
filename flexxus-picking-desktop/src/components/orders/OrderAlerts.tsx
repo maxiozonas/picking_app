@@ -1,17 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface PickingAlert {
-  id: number
-  order_id: number
-  type: string
-  message: string
-  severity: 'warning' | 'error' | 'info'
-  created_at: string
-  resolved_at?: string
-}
+import type { PickingAlert } from '@/types/api'
 
 interface OrderAlertsProps {
   alerts: PickingAlert[]
@@ -19,79 +8,84 @@ interface OrderAlertsProps {
 }
 
 const alertConfig = {
-  warning: {
-    icon: AlertTriangle,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-200',
-  },
-  error: {
+  high: {
     icon: AlertCircle,
-    color: 'text-red-600',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-200',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/5',
+    borderColor: 'border-red-500/20',
+    badge: 'border-red-500/30 bg-red-500/10 text-red-400',
   },
-  info: {
+  medium: {
+    icon: AlertTriangle,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/5',
+    borderColor: 'border-amber-500/20',
+    badge: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  },
+  low: {
     icon: Info,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/5',
+    borderColor: 'border-blue-500/20',
+    badge: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
   },
+} as const
+
+function getAlertConfig(severity: string) {
+  return alertConfig[severity as keyof typeof alertConfig] ?? alertConfig.medium
 }
 
 export function OrderAlerts({ alerts, className }: OrderAlertsProps) {
-  if (alerts.length === 0) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="text-lg">Alertas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            No hay alertas para este pedido
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="text-lg">Alertas</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {alerts.map((alert) => {
-          const config = alertConfig[alert.severity]
-          const Icon = config.icon
+    <div className={cn('rounded-lg border border-border bg-surface p-5', className)}>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Alertas{alerts.length > 0 && (
+          <span className="ml-2 rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-xs">
+            {alerts.length}
+          </span>
+        )}
+      </p>
 
-          return (
-            <div
-              key={alert.id}
-              className={cn(
-                'flex gap-3 rounded-lg border p-3',
-                config.bgColor,
-                config.borderColor
-              )}
-            >
-              <Icon className={cn('h-5 w-5 flex-shrink-0 mt-0.5', config.color)} />
-              <div className="flex-1 space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium">{alert.message}</p>
-                  {alert.resolved_at && (
-                    <Badge variant="outline" className="flex-shrink-0">
-                      Resuelta
-                    </Badge>
+      {alerts.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin alertas</p>
+      ) : (
+        <div className="space-y-2.5">
+          {alerts.map((alert) => {
+            const config = getAlertConfig(alert.severity)
+            const Icon = config.icon
+            const isResolved = alert.status === 'resolved' || alert.resolved_at != null
+
+            return (
+              <div
+                key={alert.id}
+                className={cn(
+                  'flex gap-3 rounded border p-3',
+                  config.bgColor,
+                  config.borderColor
+                )}
+              >
+                <Icon className={cn('h-4 w-4 flex-shrink-0 mt-0.5', config.color)} />
+                <div className="flex-1 space-y-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-foreground/90">{alert.message}</p>
+                    {isResolved && (
+                      <span className={cn('flex-shrink-0 rounded border px-1.5 py-0.5 text-xs', config.badge)}>
+                        Resuelta
+                      </span>
+                    )}
+                  </div>
+                  {alert.product_code && (
+                    <p className="font-mono text-xs text-muted-foreground">{alert.product_code}</p>
                   )}
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(alert.created_at).toLocaleString('es-AR')}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(alert.created_at).toLocaleString('es-AR')}
-                </p>
               </div>
-            </div>
-          )
-        })}
-      </CardContent>
-    </Card>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

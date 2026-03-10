@@ -1,61 +1,72 @@
-// API Types - will be implemented in Phase 3
 export interface User {
   id: number
   name: string
   email: string
+  username?: string
   role: string
+  warehouse_id?: number
+  warehouse?: Warehouse
 }
 
 export interface Warehouse {
   id: number
   name: string
   code: string
+  is_active?: boolean
+  is_override?: boolean
 }
 
+// Matches AdminOrderResource: { id, order_number, customer, status, warehouse, assigned_to, ... }
 export interface PickingOrder {
   id: number
   order_number: string
-  customer: string
-  warehouse_id: number
+  customer: string | null
+  warehouse_id?: number
   warehouse?: Warehouse
   status: OrderStatus
-  user_id?: number
-  user?: User
+  // Backend returns assigned_to instead of user
+  assigned_to?: { id: number; name: string } | null
+  items_count?: number
+  items_picked?: number
   started_at?: string
   completed_at?: string
   created_at: string
-  updated_at: string
 }
 
-export type OrderStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+export type OrderStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'has_issues'
 
+// Matches AdminOrderItemResource: { id, product_code, description, quantity, picked_quantity, lot, location, status }
 export interface PickingOrderItem {
   id: number
-  order_id: number
   product_code: string
-  product_name: string
-  quantity_required: number
-  quantity_picked: number
-  quantity_requested?: number
+  description: string
+  quantity: number
+  picked_quantity: number
+  lot?: string
   location?: string
-  status: 'pending' | 'in_progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed' | 'issue_reported'
 }
 
+// Matches PickingAlertResource: { id, order_number, alert_type, message, severity (high/medium/low), status, ... }
 export interface PickingAlert {
   id: number
-  order_id: number
-  type: AlertType
+  order_number?: string
+  alert_type: AlertType
   message: string
-  severity: AlertSeverity
+  severity: 'high' | 'medium' | 'low'
+  status: 'pending' | 'resolved'
+  product_code?: string
   created_at: string
-  resolved_at?: string
+  resolved_at?: string | null
+  resolved_by?: number | null
+  resolution_notes?: string | null
+  user?: { id: number; name: string } | null
 }
 
 export type AlertType = 'stock_issue' | 'product_not_found' | 'quantity_mismatch' | 'over_pick_attempt' | string
-export type AlertSeverity = 'warning' | 'error' | 'info'
 
+// Matches AdminOrderDetailResource: extends PickingOrder + items + alerts + calculated fields
 export interface OrderDetail extends PickingOrder {
-  customer_name?: string
   total_items: number
   picked_items: number
   completed_percentage: number
@@ -87,6 +98,12 @@ export interface PaginatedResponse<T> {
     per_page: number
     total: number
   }
+  links?: {
+    first: string | null
+    last: string | null
+    prev: string | null
+    next: string | null
+  }
 }
 
 export interface LoginRequest {
@@ -94,7 +111,44 @@ export interface LoginRequest {
   password: string
 }
 
+// Auth API returns: { success: true, data: { token: { token: string, ... }, user: User } }
+// After the axios interceptor unwraps { success, data } envelope:
+export interface LoginResponseData {
+  token: {
+    token: string
+    name: string
+    abilities: string[]
+    expires_at: string
+  }
+  user: User
+}
+
+// Kept for backwards compat in use-auth.ts
 export interface LoginResponse {
   user: User
   token: string
+}
+
+// Inventory stock item
+export interface InventoryItem {
+  product_code: string
+  description: string
+  warehouse_code: string
+  warehouse_name: string
+  stock_total: number
+  stock_real: number
+  stock_pending: number
+  location: string | null
+  orders_using: number
+}
+
+export interface StockSearchResult {
+  product_code: string
+  description: string
+  stock_total: number
+  stock_real: number
+  stock_pending: number
+  location: string | null
+  warehouse_code: string
+  warehouse_name: string
 }

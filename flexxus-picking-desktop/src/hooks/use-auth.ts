@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
-import type { LoginRequest, LoginResponse } from '@/types/api'
+import type { LoginRequest, LoginResponseData } from '@/types/api'
 import { toast } from '@/hooks/use-toast'
 
 interface LoginCredentials extends LoginRequest {}
@@ -19,12 +19,14 @@ export function useAuth() {
   const logout = useAuthStore((state) => state.logout)
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-      const response = await api.post<LoginResponse>('/auth/login', credentials)
+    mutationFn: async (credentials: LoginCredentials): Promise<LoginResponseData> => {
+      // After the axios interceptor unwraps { success, data } → we get { token: {...}, user: {...} }
+      const response = await api.post<LoginResponseData>('/auth/login', credentials)
       return response.data
     },
     onSuccess: (data) => {
-      login(data.user, data.token)
+      // data.token is an object { token: string, name, abilities, expires_at }
+      login(data.user, data.token.token)
       queryClient.clear()
       toast({
         title: 'Inicio de sesión exitoso',

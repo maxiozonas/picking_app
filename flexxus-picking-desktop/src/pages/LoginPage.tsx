@@ -1,16 +1,16 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useAuth } from '@/hooks/use-auth'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Boxes } from 'lucide-react'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
-  password: z.string().min(1, 'La contraseña es requerida').min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  password: z
+    .string()
+    .min(1, 'La contraseña es requerida')
+    .min(6, 'Mínimo 6 caracteres'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -20,26 +20,40 @@ export function LoginPage() {
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      username: '',
-      password: '',
-    },
+    defaultValues: { username: '', password: '' },
   })
 
-  const onSubmit = (data: LoginFormData) => {
-    login(data)
-  }
+  const onSubmit = (data: LoginFormData) => login(data)
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-          <CardDescription>
-            Ingresa tus credenciales para acceder al panel de administración
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="relative flex min-h-screen items-center justify-center bg-background bg-grid px-4 overflow-hidden">
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
+      </div>
+
+      <div className="relative w-full max-w-sm animate-fade-in">
+        {/* Logo block */}
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+            <Boxes className="h-7 w-7 text-primary" />
+          </div>
+          <div className="text-center">
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-foreground">
+              Flexxus Picking
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Panel de Administración
+            </p>
+          </div>
+        </div>
+
+        {/* Card */}
+        <div className="rounded-lg border border-border bg-surface p-7">
+          <h2 className="mb-5 font-display text-xl font-bold uppercase tracking-wide text-foreground">
+            Iniciar Sesión
+          </h2>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -47,53 +61,69 @@ export function LoginPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Usuario</FormLabel>
+                    <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Usuario
+                    </FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         placeholder="nombre.apellido"
                         type="text"
                         autoComplete="username"
                         disabled={isLoading}
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50 transition-colors"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
+                    <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Contraseña
+                    </FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         placeholder="••••••••"
                         type="password"
                         autoComplete="current-password"
                         disabled={isLoading}
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50 transition-colors"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Iniciando sesión...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Verificando...
                   </>
                 ) : (
-                  'Iniciar Sesión'
+                  'Ingresar'
                 )}
-              </Button>
+              </button>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground opacity-50">
+          Acceso restringido — solo administradores
+        </p>
+      </div>
     </div>
   )
 }

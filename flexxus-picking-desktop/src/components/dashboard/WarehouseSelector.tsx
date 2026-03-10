@@ -22,8 +22,19 @@ export function WarehouseSelector({ className }: WarehouseSelectorProps) {
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      const response = await api.get('/admin/warehouses')
-      return response.data
+        const response = await api.get('/admin/warehouses')
+        const body = response.data as any
+
+        // Support both plain arrays and Laravel Resource collections ({ data: [...] })
+        if (Array.isArray(body)) {
+          return body as Warehouse[]
+        }
+
+        if (body && typeof body === 'object' && Array.isArray(body.data)) {
+          return body.data as Warehouse[]
+        }
+
+        return [] as Warehouse[]
     },
   })
 

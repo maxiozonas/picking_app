@@ -1,6 +1,7 @@
 import { OrdersTable } from '@/components/orders/OrdersTable'
 import { useOrders } from '@/hooks/use-orders'
 import { useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle } from 'lucide-react'
 
 export function InProgressPage() {
   const queryClient = useQueryClient()
@@ -17,30 +18,45 @@ export function InProgressPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Pedidos en Proceso</h1>
-          <p className="text-muted-foreground">Seguimiento de pedidos actualmente en preparación</p>
+          <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-foreground">
+            En Proceso
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Seguimiento de pedidos actualmente en preparación
+          </p>
         </div>
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-          <h2 className="text-lg font-semibold">Error al cargar pedidos</h2>
-          <p className="text-sm">{error?.message || 'Ha ocurrido un error desconocido'}</p>
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-5">
+          <AlertTriangle className="h-5 w-5 text-red-400" />
+          <div>
+            <p className="font-medium text-red-400">Error al cargar pedidos</p>
+            <p className="text-sm text-muted-foreground">
+              {error?.message || 'Ha ocurrido un error desconocido'}
+            </p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Pedidos en Proceso</h1>
-          <p className="text-muted-foreground">Seguimiento de pedidos actualmente en preparación</p>
+          <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-foreground">
+            En Proceso
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Seguimiento de pedidos actualmente en preparación
+          </p>
         </div>
         {data && (
-          <div className="text-lg">
-            <span className="font-semibold text-blue-600">{data.meta.total}</span>{' '}
-            <span className="text-muted-foreground">
-              pedido{data.meta.total !== 1 ? 's' : ''} en proceso
-            </span>
+          <div className="text-right">
+            <p className="font-display text-2xl font-bold tabular-nums text-blue-400">
+              {data.meta.total}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              pedido{data.meta.total !== 1 ? 's' : ''} activos
+            </p>
           </div>
         )}
       </div>

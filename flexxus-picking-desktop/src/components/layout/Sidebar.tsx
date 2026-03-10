@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ShoppingCart, ListTodo, Package, Settings } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, ListTodo, Package, Boxes } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -14,37 +13,59 @@ export function Sidebar() {
   const location = useLocation()
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r bg-card">
-      <div className="flex h-14 items-center border-b px-4">
-        <span className="text-lg font-semibold">Flexxus Picking</span>
+    <div className="flex h-screen w-60 flex-col border-r border-border bg-surface">
+      {/* Logo */}
+      <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
+          <Boxes className="h-4 w-4 text-primary-foreground" />
+        </div>
+        <div>
+          <p className="font-display text-base font-bold uppercase tracking-wide text-foreground leading-none">
+            Flexxus
+          </p>
+          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground leading-none mt-0.5">
+            Picking Admin
+          </p>
+        </div>
       </div>
-      <nav className="flex-1 space-y-1 p-2">
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-0.5 p-3">
+        <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Menú
+        </p>
         {navigation.map((item) => {
-          const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
+          const isActive =
+            location.pathname === item.href ||
+            (item.href !== '/' && location.pathname.startsWith(item.href))
           return (
             <Link
               key={item.name}
               to={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'group flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                  : 'border-l-2 border-transparent text-muted-foreground hover:bg-surface-elevated hover:text-foreground'
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon
+                className={cn(
+                  'h-4 w-4 flex-shrink-0 transition-colors',
+                  isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                )}
+              />
               {item.name}
             </Link>
           )
         })}
       </nav>
-      <div className="border-t p-2">
-        <Link to="/settings">
-          <Button variant="ghost" className="w-full justify-start gap-3">
-            <Settings className="h-5 w-5" />
-            Configuración
-          </Button>
-        </Link>
+
+      {/* Footer */}
+      <div className="border-t border-border p-3">
+        <p className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground opacity-50">
+          v1.1.0
+        </p>
       </div>
     </div>
   )

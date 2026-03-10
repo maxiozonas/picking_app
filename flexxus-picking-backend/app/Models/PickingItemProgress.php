@@ -15,6 +15,9 @@ class PickingItemProgress extends Model
     protected $fillable = [
         'order_number',
         'product_code',
+        'description',
+        'location',
+        'lot',
         'quantity_required',
         'quantity_picked',
         'status',

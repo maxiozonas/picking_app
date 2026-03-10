@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/toaster'
@@ -6,11 +6,14 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { LoginPage } from '@/pages/LoginPage'
-import { DashboardPage } from '@/pages/DashboardPage'
-import { OrdersPage } from '@/pages/OrdersPage'
-import { InProgressPage } from '@/pages/InProgressPage'
-import { OrderDetailPage } from '@/pages/OrderDetailPage'
 import { Skeleton } from '@/components/ui/skeleton'
+
+// Lazy-load heavy pages for route-level code splitting
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const OrdersPage = lazy(() => import('@/pages/OrdersPage').then(m => ({ default: m.OrdersPage })))
+const InProgressPage = lazy(() => import('@/pages/InProgressPage').then(m => ({ default: m.InProgressPage })))
+const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage').then(m => ({ default: m.OrderDetailPage })))
+const InventoryPage = lazy(() => import('@/pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,9 +45,9 @@ function App() {
             {/* Public route */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/"
+	        {/* Protected routes */}
+	        <Route
+		      path="/*"
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -54,6 +57,7 @@ function App() {
                         <Route path="orders" element={<OrdersPage />} />
                         <Route path="orders/in-progress" element={<InProgressPage />} />
                         <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
+                        <Route path="inventory" element={<InventoryPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>

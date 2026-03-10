@@ -16,6 +16,7 @@ class PickingOrderProgress extends Model
     protected $fillable = [
         'order_type',
         'order_number',
+        'customer',
         'user_id',
         'warehouse_id',
         'status',

@@ -1,5 +1,5 @@
 import { StatCard } from './StatCard'
-import { Package, CheckCircle, Clock, Users } from 'lucide-react'
+import { Package, CheckCircle, Clock, Inbox } from 'lucide-react'
 import { DashboardStats } from '@/types/api'
 
 interface StatsCardsProps {
@@ -29,24 +29,28 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
         value={stats?.total_orders ?? 0}
         icon={Package}
         description="Pedidos del periodo"
+        accent="amber"
       />
       <StatCard
         title="En Proceso"
         value={stats?.in_progress_count ?? 0}
         icon={Clock}
         description="Pedidos activos"
+        accent="blue"
       />
       <StatCard
         title="Completados"
         value={stats?.completed_count ?? 0}
         icon={CheckCircle}
         description="Pedidos terminados"
+        accent="green"
       />
       <StatCard
         title="Pendientes"
         value={pendingOrders}
-        icon={Users}
+        icon={Inbox}
         description="Sin asignar"
+        accent="red"
       />
     </div>
   )
@@ -54,13 +58,13 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
 
 function StatCardSkeleton() {
   return (
-    <div className="p-6 border rounded-lg space-y-2">
+    <div className="rounded-lg border border-border bg-surface p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-        <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+        <div className="h-3 w-24 animate-pulse rounded bg-surface-elevated" />
+        <div className="h-8 w-8 animate-pulse rounded bg-surface-elevated" />
       </div>
-      <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-      <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+      <div className="h-8 w-16 animate-pulse rounded bg-surface-elevated" />
+      <div className="h-3 w-28 animate-pulse rounded bg-surface-elevated" />
     </div>
   )
 }

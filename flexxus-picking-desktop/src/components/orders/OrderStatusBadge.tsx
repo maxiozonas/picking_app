@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
 import { OrderStatus } from '@/types/api'
 import { cn } from '@/lib/utils'
 
@@ -7,38 +6,41 @@ interface OrderStatusBadgeProps {
   className?: string
 }
 
-const statusConfig: Record<
-  OrderStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }
-> = {
+const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
   pending: {
     label: 'Pendiente',
-    variant: 'secondary',
-    className: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+    className: 'border-border/60 bg-surface-elevated text-muted-foreground',
   },
   in_progress: {
     label: 'En Proceso',
-    variant: 'default',
-    className: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+    className: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
   },
   completed: {
     label: 'Completado',
-    variant: 'outline',
-    className: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300',
+    className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
   },
   cancelled: {
     label: 'Cancelado',
-    variant: 'destructive',
-    className: 'bg-red-100 text-red-800 hover:bg-red-200',
+    className: 'border-red-500/30 bg-red-500/10 text-red-400',
+  },
+  has_issues: {
+    label: 'Con Alertas',
+    className: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
   },
 }
 
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
-  const config = statusConfig[status]
+  const config = statusConfig[status] ?? statusConfig.pending
 
   return (
-    <Badge variant={config.variant} className={cn(config.className, className)}>
+    <span
+      className={cn(
+        'inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium',
+        config.className,
+        className
+      )}
+    >
       {config.label}
-    </Badge>
+    </span>
   )
 }

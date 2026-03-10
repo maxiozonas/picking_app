@@ -234,6 +234,12 @@ class PickingService implements PickingServiceInterface
         $flexxusOrder = $this->flexxusService->getOrderDetail($canonicalOrderNumber, $warehouse);
         $flexxusItems = $flexxusOrder['DETALLE'] ?? [];
 
+        // Persist customer name from Flexxus so admin can see it even without querying Flexxus
+        $customer = $flexxusOrder['RAZONSOCIAL'] ?? null;
+        if ($customer) {
+            $progress->update(['customer' => $customer]);
+        }
+
         foreach ($flexxusItems as $item) {
             $quantityRequired = (int) ($item['PENDIENTE'] ?? $item['CANTIDAD'] ?? 0);
             $productCode = $item['CODIGOPARTICULAR'] ?? '';
@@ -242,6 +248,9 @@ class PickingService implements PickingServiceInterface
                 'order_number' => $canonicalOrderNumber,
                 'product_code' => $productCode,
                 'item_code' => $productCode,
+                'description' => $item['DESCRIPCION'] ?? null,
+                'location' => null, // populated later via stock prefetch
+                'lot' => $item['LOTE'] ?? null,
                 'quantity_required' => $quantityRequired,
                 'quantity_requested' => $quantityRequired,
                 'quantity_picked' => 0,

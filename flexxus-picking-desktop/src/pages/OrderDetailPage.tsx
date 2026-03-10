@@ -4,9 +4,21 @@ import { OrderDetailHeader } from '@/components/orders/OrderDetailHeader'
 import { EmployeeAssignment } from '@/components/orders/EmployeeAssignment'
 import { OrderItemsTable } from '@/components/orders/OrderItemsTable'
 import { OrderAlerts } from '@/components/orders/OrderAlerts'
-import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-24 w-full rounded-lg bg-surface" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-28 rounded-lg bg-surface" />
+        <div className="h-28 rounded-lg bg-surface" />
+      </div>
+      <div className="h-64 rounded-lg bg-surface" />
+    </div>
+  )
+}
 
 export function OrderDetailPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>()
@@ -14,58 +26,23 @@ export function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Pedido {orderNumber}</h1>
-          <p className="text-muted-foreground">Detalles del pedido de picking</p>
-        </div>
-
-        <Card>
-          <CardContent className="p-6">
-            <Skeleton className="h-32 w-full" />
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardContent className="p-6">
-              <Skeleton className="h-48 w-full" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <Skeleton className="h-48 w-full" />
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardContent className="p-6">
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
-        </Card>
+      <div className="space-y-5">
+        <div className="h-8 w-48 animate-pulse rounded bg-surface" />
+        <DetailSkeleton />
       </div>
     )
   }
 
   if (isError || !order) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Pedido {orderNumber}</h1>
-          <p className="text-muted-foreground">Detalles del pedido de picking</p>
-        </div>
-
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5" />
-            <div>
-              <h2 className="text-lg font-semibold">Error al cargar el pedido</h2>
-              <p className="text-sm">
-                {error?.message || 'No se pudo encontrar el pedido solicitado'}
-              </p>
-            </div>
+      <div className="space-y-5">
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-5">
+          <AlertCircle className="h-5 w-5 text-red-400" />
+          <div>
+            <p className="font-medium text-red-400">Error al cargar el pedido</p>
+            <p className="text-sm text-muted-foreground">
+              {error?.message || 'No se pudo encontrar el pedido solicitado'}
+            </p>
           </div>
         </div>
       </div>
@@ -73,10 +50,23 @@ export function OrderDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2">
+        <Link
+          to="/orders"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Pedidos
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="font-mono text-sm font-medium text-foreground">{orderNumber}</span>
+      </div>
+
       <OrderDetailHeader
         orderNumber={order.order_number}
-        customer={order.customer}
+        customer={order.customer ?? ''}
         warehouseName={order.warehouse?.name || `Depósito ${order.warehouse_id}`}
         status={order.status}
         createdAt={order.created_at}
@@ -84,14 +74,18 @@ export function OrderDetailPage() {
         completedAt={order.completed_at}
       />
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <EmployeeAssignment employee={order.user} />
-
+      <div className="grid gap-4 md:grid-cols-2">
+        <EmployeeAssignment employee={order.assigned_to} />
         <OrderAlerts alerts={order.alerts || []} />
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold mb-4">Items del Pedido</h2>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Items del Pedido
+          <span className="ml-2 rounded bg-surface px-1.5 py-0.5 font-mono text-xs border border-border">
+            {order.items?.length ?? 0}
+          </span>
+        </p>
         <OrderItemsTable items={order.items || []} />
       </div>
     </div>
