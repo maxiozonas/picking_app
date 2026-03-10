@@ -16,9 +16,9 @@ export interface Warehouse {
   is_override?: boolean
 }
 
-// Matches AdminOrderResource: { id, order_number, customer, status, warehouse, assigned_to, ... }
+// Matches AdminOrderResource / PendingOrderResource: { order_number, customer, status, warehouse, ... }
 export interface PickingOrder {
-  id: number
+  id?: number
   order_number: string
   customer: string | null
   warehouse_id?: number
@@ -66,12 +66,23 @@ export interface PickingAlert {
 export type AlertType = 'stock_issue' | 'product_not_found' | 'quantity_mismatch' | 'over_pick_attempt' | string
 
 // Matches AdminOrderDetailResource: extends PickingOrder + items + alerts + calculated fields
+export interface PickingOrderEvent {
+  id: number
+  event_type: 'order_started' | 'item_picked' | 'item_completed' | 'order_completed'
+  product_code?: string | null
+  quantity?: number | null
+  message: string
+  user?: { id: number; name: string } | null
+  created_at: string
+}
+
 export interface OrderDetail extends PickingOrder {
   total_items: number
   picked_items: number
   completed_percentage: number
   items: PickingOrderItem[]
   alerts: PickingAlert[]
+  events: PickingOrderEvent[]
 }
 
 export interface DashboardStats {
@@ -151,4 +162,27 @@ export interface StockSearchResult {
   location: string | null
   warehouse_code: string
   warehouse_name: string
+}
+
+// Employee (extends User with admin-manageable fields)
+export interface Employee {
+  id: number
+  username: string
+  name: string
+  email: string
+  role: string
+  is_active: boolean
+  warehouse?: Warehouse
+  created_at: string
+  updated_at?: string
+}
+
+export interface EmployeeFormData {
+  username: string
+  name: string
+  email: string
+  password?: string
+  role: 'admin' | 'empleado'
+  warehouse_id?: number | null
+  is_active: boolean
 }
