@@ -31,6 +31,7 @@ class PickingOrderDetailResource extends JsonResource
             ],
             'items' => PickingOrderItemResource::collection($data['items'] ?? collect()),
             'alerts' => $data['alerts'] ?? [],
+            'events' => $data['events'] ?? [],
         ];
     }
 }

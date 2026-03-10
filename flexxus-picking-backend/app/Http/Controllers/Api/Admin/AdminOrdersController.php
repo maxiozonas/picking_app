@@ -7,10 +7,17 @@ use App\Http\Requests\Admin\ListOrdersRequest;
 use App\Http\Resources\Admin\AdminOrderDetailResource;
 use App\Http\Resources\Admin\AdminOrderResource;
 use App\Models\PickingOrderProgress;
+use App\Services\Picking\Interfaces\AdminPickingServiceInterface;
+use App\Services\Picking\OrderNumberParser;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class AdminOrdersController extends Controller
 {
+    public function __construct(
+        private AdminPickingServiceInterface $adminPickingService
+    ) {}
+
     /**
      * Get all orders with optional filters.
      */
@@ -45,13 +52,28 @@ class AdminOrdersController extends Controller
 
     /**
      * Get order detail with items and alerts.
+     * Tries local DB first; falls back to Flexxus for unstarted orders.
      */
-    public function show(string $orderNumber): AdminOrderDetailResource
+    public function show(string $orderNumber): AdminOrderDetailResource|JsonResponse
     {
-        $order = PickingOrderProgress::where('order_number', $orderNumber)
-            ->with(['user', 'warehouse', 'items', 'alerts'])
-            ->firstOrFail();
+        // Normalize to canonical form ("NP 623203") regardless of what the route receives
+        $canonical = OrderNumberParser::normalize($orderNumber);
 
-        return new AdminOrderDetailResource($order);
+        $order = PickingOrderProgress::where('order_number', $canonical)
+            ->with(['user', 'warehouse', 'items', 'alerts'])
+            ->first();
+
+        if ($order) {
+            return new AdminOrderDetailResource($order);
+        }
+
+        // Order not in local DB — it may be an unstarted Flexxus order
+        $flexxusDetail = $this->adminPickingService->getPendingOrderDetail($canonical);
+
+        if ($flexxusDetail) {
+            return response()->json(['data' => $flexxusDetail]);
+        }
+
+        abort(404, "Order {$canonical} not found");
     }
 }
