@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ShoppingCart, ListTodo, Package, Boxes } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, ListTodo, Package, Boxes, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -7,6 +7,7 @@ const navigation = [
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'En Proceso', href: '/orders/in-progress', icon: ListTodo },
   { name: 'Inventario', href: '/inventory', icon: Package },
+  { name: 'Empleados', href: '/employees', icon: Users },
 ]
 
 export function Sidebar() {

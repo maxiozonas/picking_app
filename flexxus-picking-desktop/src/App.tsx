@@ -14,6 +14,7 @@ const OrdersPage = lazy(() => import('@/pages/OrdersPage').then(m => ({ default:
 const InProgressPage = lazy(() => import('@/pages/InProgressPage').then(m => ({ default: m.InProgressPage })))
 const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage').then(m => ({ default: m.OrderDetailPage })))
 const InventoryPage = lazy(() => import('@/pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
+const EmployeesPage = lazy(() => import('@/pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,7 @@ function App() {
                         <Route path="orders/in-progress" element={<InProgressPage />} />
                         <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
                         <Route path="inventory" element={<InventoryPage />} />
+                        <Route path="employees" element={<EmployeesPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
