@@ -1,6 +1,6 @@
 import { OrderStatusBadge } from './OrderStatusBadge'
 import { OrderStatus } from '@/types/api'
-import { Building2, Calendar, Clock } from 'lucide-react'
+import { Building2, Calendar, Clock, Package } from 'lucide-react'
 
 interface OrderDetailHeaderProps {
   orderNumber: string
@@ -10,6 +10,9 @@ interface OrderDetailHeaderProps {
   createdAt: string
   startedAt?: string
   completedAt?: string
+  totalItems?: number
+  pickedItems?: number
+  completedPercentage?: number
 }
 
 export function OrderDetailHeader({
@@ -20,6 +23,9 @@ export function OrderDetailHeader({
   createdAt,
   startedAt,
   completedAt,
+  totalItems = 0,
+  pickedItems = 0,
+  completedPercentage = 0,
 }: OrderDetailHeaderProps) {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleString('es-AR', {
@@ -58,6 +64,29 @@ export function OrderDetailHeader({
         </div>
 
         <div className="text-right space-y-1.5 flex-shrink-0">
+          {/* Items progress */}
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-mono text-sm font-bold tabular-nums text-foreground">
+              {pickedItems}/{totalItems}
+            </span>
+            <span className="text-xs text-muted-foreground">items</span>
+          </div>
+          {totalItems > 0 && (
+            <div className="flex items-center justify-end gap-2">
+              <div className="h-1.5 w-24 rounded-full bg-surface-elevated overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    completedPercentage >= 100 ? 'bg-emerald-500' : completedPercentage > 0 ? 'bg-amber-400' : 'bg-border'
+                  }`}
+                  style={{ width: `${Math.min(100, completedPercentage)}%` }}
+                />
+              </div>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {completedPercentage.toFixed(0)}%
+              </span>
+            </div>
+          )}
           {startedAt && (
             <div className="flex items-center justify-end gap-1.5 text-xs">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />

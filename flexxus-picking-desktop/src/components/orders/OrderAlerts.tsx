@@ -1,6 +1,8 @@
-import { AlertTriangle, AlertCircle, Info } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, AlertCircle, Info, Clock as ClockIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PickingAlert } from '@/types/api'
+import { AlertTimelineModal } from './AlertTimelineModal'
 
 interface OrderAlertsProps {
   alerts: PickingAlert[]
@@ -36,28 +38,46 @@ function getAlertConfig(severity: string) {
 }
 
 export function OrderAlerts({ alerts, className }: OrderAlertsProps) {
-  return (
-    <div className={cn('rounded-lg border border-border bg-surface p-5', className)}>
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Alertas{alerts.length > 0 && (
-          <span className="ml-2 rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-xs">
-            {alerts.length}
-          </span>
-        )}
-      </p>
+  const [showTimeline, setShowTimeline] = useState(false)
 
-      {alerts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin alertas</p>
-      ) : (
-        <div className="space-y-2.5">
-          {alerts.map((alert) => {
-            const config = getAlertConfig(alert.severity)
+  // Get the latest alert by created_at
+  const latestAlert = alerts.length > 0
+    ? [...alerts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    : null
+
+  return (
+    <>
+      <div className={cn('rounded-lg border border-border bg-surface p-5', className)}>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Última Alerta
+            {alerts.length > 0 && (
+              <span className="ml-2 rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-xs">
+                {alerts.length}
+              </span>
+            )}
+          </p>
+          {alerts.length > 1 && (
+            <button
+              onClick={() => setShowTimeline(true)}
+              className="flex items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              <ClockIcon className="h-3 w-3" />
+              Ver timeline ({alerts.length})
+            </button>
+          )}
+        </div>
+
+        {!latestAlert ? (
+          <p className="text-sm text-muted-foreground">Sin actividad registrada</p>
+        ) : (
+          (() => {
+            const config = getAlertConfig(latestAlert.severity)
             const Icon = config.icon
-            const isResolved = alert.status === 'resolved' || alert.resolved_at != null
+            const isResolved = latestAlert.status === 'resolved' || latestAlert.resolved_at != null
 
             return (
               <div
-                key={alert.id}
                 className={cn(
                   'flex gap-3 rounded border p-3',
                   config.bgColor,
@@ -67,25 +87,41 @@ export function OrderAlerts({ alerts, className }: OrderAlertsProps) {
                 <Icon className={cn('h-4 w-4 flex-shrink-0 mt-0.5', config.color)} />
                 <div className="flex-1 space-y-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-foreground/90">{alert.message}</p>
+                    <p className="text-sm text-foreground/90">{latestAlert.message}</p>
                     {isResolved && (
                       <span className={cn('flex-shrink-0 rounded border px-1.5 py-0.5 text-xs', config.badge)}>
                         Resuelta
                       </span>
                     )}
                   </div>
-                  {alert.product_code && (
-                    <p className="font-mono text-xs text-muted-foreground">{alert.product_code}</p>
+                  {latestAlert.product_code && (
+                    <p className="font-mono text-xs text-muted-foreground">{latestAlert.product_code}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {new Date(alert.created_at).toLocaleString('es-AR')}
+                    {new Date(latestAlert.created_at).toLocaleString('es-AR')}
                   </p>
                 </div>
               </div>
             )
-          })}
-        </div>
-      )}
-    </div>
+          })()
+        )}
+
+        {alerts.length === 1 && (
+          <button
+            onClick={() => setShowTimeline(true)}
+            className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ClockIcon className="h-3 w-3" />
+            Ver timeline
+          </button>
+        )}
+      </div>
+
+      <AlertTimelineModal
+        alerts={alerts}
+        open={showTimeline}
+        onClose={() => setShowTimeline(false)}
+      />
+    </>
   )
 }

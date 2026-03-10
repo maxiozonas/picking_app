@@ -4,6 +4,7 @@ import { OrderDetailHeader } from '@/components/orders/OrderDetailHeader'
 import { EmployeeAssignment } from '@/components/orders/EmployeeAssignment'
 import { OrderItemsTable } from '@/components/orders/OrderItemsTable'
 import { OrderAlerts } from '@/components/orders/OrderAlerts'
+import { OrderActivityLog } from '@/components/orders/OrderActivityLog'
 import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -72,12 +73,17 @@ export function OrderDetailPage() {
         createdAt={order.created_at}
         startedAt={order.started_at}
         completedAt={order.completed_at}
+        totalItems={order.total_items ?? order.items?.length ?? 0}
+        pickedItems={order.picked_items ?? 0}
+        completedPercentage={order.completed_percentage ?? 0}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
         <EmployeeAssignment employee={order.assigned_to} />
         <OrderAlerts alerts={order.alerts || []} />
       </div>
+
+      <OrderActivityLog events={order.events || []} />
 
       <div>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
