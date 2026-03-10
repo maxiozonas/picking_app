@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminInventoryController;
 use App\Http\Controllers\Api\Admin\AdminOrdersController;
+use App\Http\Controllers\Api\Admin\AdminPendingOrdersController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\WarehouseController;
 use App\Http\Controllers\Api\AuthController;
@@ -30,6 +31,10 @@ Route::middleware('auth:sanctum', 'role.admin')->prefix('admin')->group(function
     // Admin orders management
     Route::get('/orders', [AdminOrdersController::class, 'index']);
     Route::get('/orders/{order_number}', [AdminOrdersController::class, 'show']);
+
+    // Pending orders (from Flexxus)
+    Route::get('/pending-orders', [AdminPendingOrdersController::class, 'index']);
+    Route::post('/pending-orders/refresh', [AdminPendingOrdersController::class, 'refresh']);
 
     // Inventory / Stock
     Route::get('/inventory', [AdminInventoryController::class, 'index']);

@@ -73,6 +73,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Admin\WarehouseServiceInterface::class,
             \App\Services\Admin\WarehouseService::class
         );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\AdminPickingServiceInterface::class,
+            \App\Services\Picking\AdminPickingService::class
+        );
     }
 
     /**

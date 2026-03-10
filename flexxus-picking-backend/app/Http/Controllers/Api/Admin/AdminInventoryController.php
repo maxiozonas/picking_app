@@ -7,13 +7,15 @@ use App\Http\Resources\Admin\InventoryItemResource;
 use App\Models\PickingItemProgress;
 use App\Models\Warehouse;
 use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\Interfaces\AdminPickingServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminInventoryController extends Controller
 {
     public function __construct(
-        private FlexxusPickingService $flexxusService
+        private FlexxusPickingService $flexxusService,
+        private AdminPickingServiceInterface $adminPickingService
     ) {}
 
     /**
@@ -27,8 +29,8 @@ class AdminInventoryController extends Controller
         $warehouseId = $request->integer('warehouse_id') ?: null;
         $perPage = min($request->integer('per_page', 20), 100);
 
-        // Get distinct product codes from active (non-completed) orders
-        $itemsQuery = PickingItemProgress::query()
+        // 1. Get product codes from locally started orders (PickingItemProgress)
+        $localItems = PickingItemProgress::query()
             ->select('product_code', 'description')
             ->whereHas('order', function ($q) use ($warehouseId) {
                 $q->whereIn('status', ['pending', 'in_progress']);
@@ -37,24 +39,50 @@ class AdminInventoryController extends Controller
                 }
             })
             ->groupBy('product_code', 'description')
-            ->orderBy('product_code');
+            ->get()
+            ->keyBy('product_code');
 
-        $paginated = $itemsQuery->paginate($perPage);
+        // 2. Get product codes from Flexxus pending orders (not yet started locally)
+        $pendingItems = $this->adminPickingService->getPendingOrderItems(
+            array_filter(['warehouse_id' => $warehouseId])
+        );
 
-        // Determine which warehouses to query stock for
+        // 3. Merge both sources, local items take priority for description
+        $allItems = collect();
+        foreach ($localItems as $code => $item) {
+            $allItems->put($code, [
+                'product_code' => $code,
+                'description' => $item->description ?? '',
+            ]);
+        }
+        foreach ($pendingItems as $pending) {
+            if (!$allItems->has($pending['product_code'])) {
+                $allItems->put($pending['product_code'], [
+                    'product_code' => $pending['product_code'],
+                    'description' => $pending['description'] ?? '',
+                ]);
+            }
+        }
+
+        // 4. Sort and paginate manually
+        $sorted = $allItems->sortBy('product_code')->values();
+        $page = max(1, $request->integer('page', 1));
+        $sliced = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+        $totalItems = $sorted->count();
+
+        // 5. Determine which warehouses to query stock for
         $warehouses = $warehouseId
             ? Warehouse::where('id', $warehouseId)->get()
             : Warehouse::where('is_active', true)->get();
 
         $results = collect();
 
-        foreach ($paginated->items() as $item) {
+        foreach ($sliced as $item) {
             foreach ($warehouses as $warehouse) {
-                $stockInfo = $this->flexxusService->getProductStock($item->product_code, $warehouse);
+                $stockInfo = $this->flexxusService->getProductStock($item['product_code'], $warehouse);
 
-                // Count how many active order-items need this product in this warehouse
                 $ordersUsing = PickingItemProgress::query()
-                    ->where('product_code', $item->product_code)
+                    ->where('product_code', $item['product_code'])
                     ->whereHas('order', fn ($q) => $q
                         ->whereIn('status', ['pending', 'in_progress'])
                         ->where('warehouse_id', $warehouse->id)
@@ -62,8 +90,8 @@ class AdminInventoryController extends Controller
                     ->count();
 
                 $results->push([
-                    'product_code'   => $item->product_code,
-                    'description'    => $item->description ?? '',
+                    'product_code'   => $item['product_code'],
+                    'description'    => $item['description'],
                     'warehouse_id'   => $warehouse->id,
                     'warehouse_code' => $warehouse->code,
                     'warehouse_name' => $warehouse->name,
@@ -79,10 +107,10 @@ class AdminInventoryController extends Controller
         return response()->json([
             'data' => InventoryItemResource::collection($results),
             'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page'    => $paginated->lastPage(),
-                'per_page'     => $paginated->perPage(),
-                'total'        => $paginated->total(),
+                'current_page' => $page,
+                'last_page'    => (int) ceil($totalItems / $perPage),
+                'per_page'     => $perPage,
+                'total'        => $totalItems,
             ],
         ]);
     }
