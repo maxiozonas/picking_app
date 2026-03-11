@@ -1383,10 +1383,193 @@ pnpm build
    - Check TypeScript errors in build output
    - Run `pnpm lint` to check for code issues
 
-4. **Test Failures**
-   - Ensure MSW handlers are properly configured
-   - Check test environment variables
-   - Run tests with `--inspect` for debugging
+ 4. **Test Failures**
+    - Ensure MSW handlers are properly configured
+    - Check test environment variables
+    - Run tests with `--inspect` for debugging
+
+### TanStack Query (React Query) Patterns
+
+The desktop app uses TanStack Query v5 for server state management with centralized cache configuration.
+
+#### Cache Configuration (`src/lib/query-config.ts`)
+
+```typescript
+export const QueryCacheTime = {
+  Stats: 30000,           // 30s - Dashboard stats
+  StatsRefetch: 30000,    // 30s - Auto-refetch interval
+  PendingOrders: 30000,   // 30s - Pending orders list
+  Inventory: 30000,       // 30s - Inventory list
+  Orders: 45000,          // 45s - Orders list (more stable)
+  OrderDetail: 60000,     // 60s - Single order detail
+  Employees: 60000,       // 60s - Employees list
+  Warehouses: 300000,     // 5min - Warehouses (rarely changes)
+  StockSearch: 30000,     // 30s - Stock search results
+} as const
+```
+
+#### QueryClient Configuration (`src/main.tsx`)
+
+```typescript
+import { QueryClient } from '@tanstack/react-query'
+import { retryFn, retryDelay, NonRetryableStatuses } from '@/lib/query-config'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry logic with exponential backoff
+      retry: retryFn,
+      retryDelay: retryDelay,
+
+      // Don't retry on client errors (4xx)
+      // NonRetryableStatuses: [401, 403, 404, 422]
+
+      // Default stale time (can be overridden per query)
+      staleTime: 30000, // 30 seconds
+
+      // Keep garbage collection short
+      gcTime: 300000, // 5 minutes
+    },
+  },
+})
+```
+
+#### Placeholder Data Pattern
+
+For smooth UX during pagination transitions, use the built-in `keepPreviousData` sentinel from TanStack Query v5:
+
+```typescript
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
+
+export function useOrders(params: UseOrdersParams = {}) {
+  return useQuery<PaginatedResponse<PickingOrder>>({
+    queryKey: ['orders', selectedWarehouseId, search, status, page, perPage],
+    queryFn: async () => { /* ... */ },
+    // Retains previous page data during pagination transitions (keepPreviousData)
+    // On cold cache (first load): data=undefined, isPlaceholderData=false — skeletons shown via isLoading
+    placeholderData: keepPreviousData,
+    staleTime: QueryCacheTime.Orders,
+  })
+}
+```
+
+**Important:** Do NOT use custom `generatePlaceholder*()` functions that fabricate fake rows. These cause stat counters (e.g. "15 pedidos totales") to flash incorrect values on first load. The correct idiom is `keepPreviousData`:
+
+| Scenario | `generatePlaceholder*` (WRONG) | `keepPreviousData` (CORRECT) |
+|----------|-------------------------------|------------------------------|
+| First load | `isPlaceholderData=true`, fake 15 rows shown | `isPlaceholderData=false`, `data=undefined`, real skeleton shown |
+| Page 1→2 | Previous data retained | Previous data retained (same) |
+| Real data arrives | Real data shown | Real data shown (same) |
+
+**Stat counter guard:** When using `keepPreviousData`, guard stat counters with `!isPlaceholderData` to prevent stale counts showing during pagination:
+
+```typescript
+// OrdersPage.tsx / InProgressPage.tsx
+{data && !isPlaceholderData && (
+  <span>{data.meta.total} pedidos totales</span>
+)}
+
+// InventoryPage.tsx (list vs search mode)
+{(!isSearching ? !listQuery.isPlaceholderData : true) && (
+  <div className="grid grid-cols-3 gap-4">
+    {/* stats cards */}
+  </div>
+)}
+```
+
+#### Query Key Patterns
+
+Consistent query keys enable efficient cache management:
+
+```typescript
+// Simple query
+queryKey: ['stats', warehouseId, dateFrom, dateTo]
+
+// Paginated list
+queryKey: ['orders', warehouseId, search, status, page, perPage]
+
+// Single item
+queryKey: ['order', orderNumber]
+
+// Search with parameters
+queryKey: ['inventory', 'search', { productCode, warehouseId }]
+```
+
+#### Mutation with Cache Invalidation
+
+```typescript
+export function useCreateEmployee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: EmployeeFormData) => {
+      const response = await api.post('/admin/users', data)
+      return response.data
+    },
+    onSuccess: () => {
+      // Invalidate related queries to refetch
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Error al crear empleado'
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: message,
+      })
+    },
+  })
+}
+```
+
+#### Best Practices
+
+1. **Use Centralized Cache Constants**
+   - Import from `@/lib/query-config`
+   - Don't hardcode staleTime values
+   - Keep cache times consistent across hooks
+
+2. **Choose staleTime Based on Data Volatility**
+   - **High volatility** (stats, orders): 30-45 seconds
+   - **Medium volatility** (employees, inventory): 60 seconds
+   - **Low volatility** (warehouses): 5 minutes
+
+3. **Use Placeholder Data for Lists**
+   - Prevents layout shift during pagination
+   - Shows skeleton UI instead of blank screen
+   - Improves perceived performance
+
+4. **Enable Queries Conditionally**
+   ```typescript
+   enabled: !!orderNumber  // Only fetch if orderNumber exists
+   enabled: productCode.trim().length >= 2  // Only search after 2 chars
+   ```
+
+5. **Retry Logic**
+   - Automatic retry with exponential backoff
+   - Max 3 attempts for network errors
+   - No retry for client errors (4xx)
+   - Special handling for 408 (timeout) and 429 (rate limit)
+
+6. **Query Invalidation After Mutations**
+   ```typescript
+   queryClient.invalidateQueries({ queryKey: ['employees'] })
+   queryClient.invalidateQueries({ queryKey: ['employees', warehouseId] })
+   ```
+
+#### Available Hooks
+
+| Hook | Cache Time | Description | Location |
+|------|-----------|-------------|----------|
+| `useStats` | 30s | Dashboard statistics | `src/hooks/use-stats.ts` |
+| `useOrders` | 45s | Orders list (paginated) | `src/hooks/use-orders.ts` |
+| `useOrderDetail` | 60s | Single order details | `src/hooks/use-orders.ts` |
+| `usePendingOrders` | 30s | Pending orders list | `src/hooks/use-pending-orders.ts` |
+| `useEmployees` | 60s | Employees list | `src/hooks/use-employees.ts` |
+| `useWarehouses` | 5min | Warehouses list | `src/hooks/use-employees.ts` |
+| `useInventory` | 30s | Inventory list | `src/hooks/use-inventory.ts` |
+| `useStockSearch` | 30s | Stock search | `src/hooks/use-inventory.ts` |
+| `useAuth` | - | Authentication mutations | `src/hooks/use-auth.ts` |
 
 ---
 
