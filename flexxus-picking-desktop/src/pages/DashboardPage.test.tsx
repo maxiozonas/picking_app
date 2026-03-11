@@ -69,9 +69,7 @@ describe('DashboardPage', () => {
     render(<DashboardPage />, { wrapper })
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(
-      screen.getByText('Resumen de operaciones del picking')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Resumen de operaciones del picking')).toBeInTheDocument()
   })
 
   it('should render loading skeletons while fetching stats', () => {

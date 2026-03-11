@@ -33,10 +33,7 @@ describe('Functionality Tests: Pagination, Filtering, Search', () => {
     // Login as admin
     useAuthStore
       .getState()
-      .login(
-        { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-        'token'
-      )
+      .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
   })
 
   afterEach(() => {

@@ -153,10 +153,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Login first
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Dashboard', '/')
 
@@ -174,10 +171,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Override handler to return error
       server.use(
         http.post('*/api/auth/login', () => {
-          return HttpResponse.json(
-            { message: 'Credenciales inválidas' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Credenciales inválidas' }, { status: 401 })
         })
       )
 
@@ -208,10 +202,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       renderApp()
 
@@ -239,10 +230,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       renderApp()
 
@@ -276,10 +264,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Orders', '/orders')
 
@@ -309,10 +294,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Orders', '/orders')
 
@@ -342,10 +324,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Orders', '/orders')
 
@@ -381,10 +360,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Order Detail', '/orders/EXP-2026-00123')
 
@@ -415,10 +391,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       renderApp()
 
@@ -430,10 +403,7 @@ describe('User Flow Tests: Login → Dashboard → Orders → Detail', () => {
       // Simulate 401 response (session expired)
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Unauthenticated' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Unauthenticated' }, { status: 401 })
         })
       )
 

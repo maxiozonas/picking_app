@@ -151,10 +151,7 @@ describe('API Hooks Integration Tests with MSW', () => {
       // Override handler to return error
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Internal server error' },
-            { status: 500 }
-          )
+          return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
         })
       )
 
@@ -189,10 +186,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     })
 
     it('should fetch orders with search filter', async () => {
-      const { result } = renderHook(
-        () => useOrders({ search: 'EXP-2026-00123' }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useOrders({ search: 'EXP-2026-00123' }), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
@@ -203,10 +197,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     })
 
     it('should fetch orders with status filter', async () => {
-      const { result } = renderHook(
-        () => useOrders({ status: 'in_progress' }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useOrders({ status: 'in_progress' }), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
@@ -222,10 +213,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     })
 
     it('should fetch orders with pagination', async () => {
-      const { result } = renderHook(
-        () => useOrders({ page: 1, perPage: 15 }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useOrders({ page: 1, perPage: 15 }), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
@@ -241,10 +229,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     })
 
     it('should handle empty results', async () => {
-      const { result } = renderHook(
-        () => useOrders({ search: 'NONEXISTENT' }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useOrders({ search: 'NONEXISTENT' }), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
@@ -325,10 +310,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     it('should handle 401 unauthorized errors', async () => {
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Unauthorized' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
         })
       )
 
@@ -345,10 +327,7 @@ describe('API Hooks Integration Tests with MSW', () => {
     it('should handle 500 server errors', async () => {
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Internal server error' },
-            { status: 500 }
-          )
+          return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
         })
       )
 
@@ -383,10 +362,10 @@ describe('API Hooks Integration Tests with MSW', () => {
     })
 
     it('should refetch when filters change', async () => {
-      const { result, rerender } = renderHook(
-        ({ status }) => useOrders({ status }),
-        { wrapper, initialProps: { status: 'pending' } }
-      )
+      const { result, rerender } = renderHook(({ status }) => useOrders({ status }), {
+        wrapper,
+        initialProps: { status: 'pending' },
+      })
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)

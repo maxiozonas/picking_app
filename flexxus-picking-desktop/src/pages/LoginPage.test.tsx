@@ -110,7 +110,9 @@ describe('LoginPage', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/la contraseña debe tener al menos 6 caracteres/i)).toBeInTheDocument()
+      expect(
+        screen.getByText(/la contraseña debe tener al menos 6 caracteres/i)
+      ).toBeInTheDocument()
     })
 
     expect(mockLogin).not.toHaveBeenCalled()

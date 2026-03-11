@@ -66,18 +66,12 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       // Start logged in
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       // Mock 401 response
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Unauthenticated' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Unauthenticated' }, { status: 401 })
         })
       )
 
@@ -96,10 +90,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should show error message on login failure', async () => {
       server.use(
         http.post('*/api/auth/login', () => {
-          return HttpResponse.json(
-            { message: 'Credenciales inválidas' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Credenciales inválidas' }, { status: 401 })
         })
       )
 
@@ -123,18 +114,12 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should handle multiple 401 errors gracefully', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       // Mock all endpoints to return 401
       server.use(
         http.get('*/api/admin/*', () => {
-          return HttpResponse.json(
-            { message: 'Unauthenticated' },
-            { status: 401 }
-          )
+          return HttpResponse.json({ message: 'Unauthenticated' }, { status: 401 })
         })
       )
 
@@ -159,10 +144,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should show error state on network failure', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       // Mock network error
       server.use(
@@ -174,19 +156,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/error de red|network error/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/error de red|network error/i)).toBeInTheDocument()
       })
     })
 
     it('should show retry button on network error', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
@@ -197,19 +174,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /reintentar|retry/i })
-        ).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /reintentar|retry/i })).toBeInTheDocument()
       })
     })
 
     it('should retry on button click', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       let attemptCount = 0
 
@@ -234,9 +206,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // First attempt fails
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /reintentar|retry/i })
-        ).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /reintentar|retry/i })).toBeInTheDocument()
       })
 
       // Click retry
@@ -246,9 +216,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       // Should succeed on retry
       await waitFor(() => {
         expect(screen.getByText(/dashboard/i)).toBeInTheDocument()
-        expect(
-          screen.queryByRole('button', { name: /reintentar|retry/i })
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /reintentar|retry/i })).not.toBeInTheDocument()
       })
     })
   })
@@ -257,78 +225,54 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should handle 500 internal server error', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Internal server error' },
-            { status: 500 }
-          )
+          return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
         })
       )
 
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/error del servidor|server error/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/error del servidor|server error/i)).toBeInTheDocument()
       })
     })
 
     it('should handle 502 bad gateway', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Bad gateway' },
-            { status: 502 }
-          )
+          return HttpResponse.json({ message: 'Bad gateway' }, { status: 502 })
         })
       )
 
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/error del servidor|bad gateway/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/error del servidor|bad gateway/i)).toBeInTheDocument()
       })
     })
 
     it('should handle 503 service unavailable', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
-          return HttpResponse.json(
-            { message: 'Service unavailable' },
-            { status: 503 }
-          )
+          return HttpResponse.json({ message: 'Service unavailable' }, { status: 503 })
         })
       )
 
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/servicio no disponible|service unavailable/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/servicio no disponible|service unavailable/i)).toBeInTheDocument()
       })
     })
   })
@@ -337,38 +281,28 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should handle 404 for order detail', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Order Detail', '/orders/NONEXISTENT')
 
       renderWithProviders(React.createElement(OrderDetailPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/orden no encontrada|order not found/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/orden no encontrada|order not found/i)).toBeInTheDocument()
       })
     })
 
     it('should provide navigation back to orders list on 404', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       window.history.pushState({}, 'Order Detail', '/orders/NONEXISTENT')
 
       renderWithProviders(React.createElement(OrderDetailPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /volver|atrás|back/i })
-        ).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /volver|atrás|back/i })).toBeInTheDocument()
       })
     })
   })
@@ -377,20 +311,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should not retry on 4xx errors (client errors)', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       let requestCount = 0
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
           requestCount++
-          return HttpResponse.json(
-            { message: 'Bad request' },
-            { status: 400 }
-          )
+          return HttpResponse.json({ message: 'Bad request' }, { status: 400 })
         })
       )
 
@@ -407,10 +335,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should show retry count in error message', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
@@ -421,9 +346,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       renderWithProviders(React.createElement(DashboardPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/error de red|network error/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/error de red|network error/i)).toBeInTheDocument()
       })
 
       // Should mention retry option
@@ -435,22 +358,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should show loading state before error', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/dashboard/stats', () => {
           // Add delay to ensure loading state is visible
           return new Promise((resolve) => {
             setTimeout(() => {
-              resolve(
-                HttpResponse.json(
-                  { message: 'Error' },
-                  { status: 500 }
-                )
-              )
+              resolve(HttpResponse.json({ message: 'Error' }, { status: 500 }))
             }, 100)
           })
         })
@@ -463,19 +378,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // Then show error
       await waitFor(() => {
-        expect(
-          screen.getByText(/error del servidor|server error/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/error del servidor|server error/i)).toBeInTheDocument()
       })
     })
 
     it('should recover from error on successful retry', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       let attemptCount = 0
 
@@ -483,10 +393,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
         http.get('*/api/admin/dashboard/stats', () => {
           attemptCount++
           if (attemptCount === 1) {
-            return HttpResponse.json(
-              { message: 'Error' },
-              { status: 500 }
-            )
+            return HttpResponse.json({ message: 'Error' }, { status: 500 })
           }
           return HttpResponse.json({
             total_orders: 100,
@@ -503,9 +410,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // First shows error
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /reintentar|retry/i })
-        ).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /reintentar|retry/i })).toBeInTheDocument()
       })
 
       // Click retry
@@ -515,9 +420,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       // Should show success
       await waitFor(() => {
         expect(screen.getByText(/órdenes/i)).toBeInTheDocument()
-        expect(
-          screen.queryByRole('button', { name: /reintentar|retry/i })
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /reintentar|retry/i })).not.toBeInTheDocument()
       })
     })
   })
@@ -526,10 +429,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should show empty state when no orders match filters', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/orders', () => {
@@ -548,19 +448,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
       renderWithProviders(React.createElement(OrdersPage))
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/no se encontraron órdenes|no orders found/i)
-        ).toBeInTheDocument()
+        expect(screen.getByText(/no se encontraron órdenes|no orders found/i)).toBeInTheDocument()
       })
     })
 
     it('should provide option to clear filters on empty state', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       server.use(
         http.get('*/api/admin/orders', () => {
@@ -590,10 +485,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
     it('should handle very large order numbers in search', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       renderWithProviders(React.createElement(OrdersPage))
 
@@ -604,19 +496,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // Should handle gracefully (either show results or empty state)
       await waitFor(() => {
-        expect(
-          screen.queryByTestId(/error/i)
-        ).not.toBeInTheDocument()
+        expect(screen.queryByTestId(/error/i)).not.toBeInTheDocument()
       })
     })
 
     it('should handle special characters in search', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       renderWithProviders(React.createElement(OrdersPage))
 
@@ -627,19 +514,14 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // Should handle gracefully
       await waitFor(() => {
-        expect(
-          screen.queryByTestId(/error/i)
-        ).not.toBeInTheDocument()
+        expect(screen.queryByTestId(/error/i)).not.toBeInTheDocument()
       })
     })
 
     it('should handle concurrent requests gracefully', async () => {
       useAuthStore
         .getState()
-        .login(
-          { id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' },
-          'token'
-        )
+        .login({ id: 1, name: 'Admin', email: 'admin@example.com', role: 'admin' }, 'token')
 
       // Multiple requests happening at once (e.g., dashboard stats, orders, etc.)
       renderWithProviders(
@@ -653,9 +535,7 @@ describe('Error Handling Tests: 401 Redirects, Error States, Retry Logic', () =>
 
       // Should handle without errors
       await waitFor(() => {
-        expect(
-          screen.queryAllByTestId(/error/i).length
-        ).toBe(0)
+        expect(screen.queryAllByTestId(/error/i).length).toBe(0)
       })
     })
   })

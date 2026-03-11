@@ -1,5 +1,4 @@
 import { http, HttpResponse } from 'msw'
-import { setupWorker } from 'msw/browser'
 
 // Mock data
 const mockUser = {
@@ -151,10 +150,7 @@ export const handlers = [
       })
     }
 
-    return HttpResponse.json(
-      { message: 'Invalid credentials' },
-      { status: 401 }
-    )
+    return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 })
   }),
 
   http.post('*/api/auth/logout', () => {
@@ -166,7 +162,7 @@ export const handlers = [
   }),
 
   // Dashboard stats endpoint
-  http.get('*/api/admin/dashboard/stats', ({ request }) => {
+  http.get('*/api/admin/stats', ({ request }) => {
     const url = new URL(request.url)
     const warehouseId = url.searchParams.get('warehouse_id')
     // Date filters available but not used in basic implementation
@@ -196,9 +192,7 @@ export const handlers = [
     let filteredOrders = [...mockOrders.data]
 
     if (warehouseId) {
-      filteredOrders = filteredOrders.filter(
-        (o) => o.warehouse.id === parseInt(warehouseId)
-      )
+      filteredOrders = filteredOrders.filter((o) => o.warehouse.id === parseInt(warehouseId))
     }
 
     if (status) {
@@ -234,27 +228,18 @@ export const handlers = [
       return HttpResponse.json(mockOrderDetail)
     }
 
-    return HttpResponse.json(
-      { message: 'Order not found' },
-      { status: 404 }
-    )
+    return HttpResponse.json({ message: 'Order not found' }, { status: 404 })
   }),
 
   // Error simulation endpoints
   http.get('*/api/admin/error', () => {
-    return HttpResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    )
+    return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
   }),
 
   http.get('*/api/admin/unauthorized', () => {
-    return HttpResponse.json(
-      { message: 'Unauthorized' },
-      { status: 401 }
-    )
+    return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
   }),
 ]
 
-// Setup worker for browser
-export const worker = setupWorker(...handlers)
+// Note: For browser testing, create a worker in browser-specific test files
+// For Node.js testing, use setupServer from 'msw/node' with these handlers

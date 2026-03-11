@@ -62,11 +62,7 @@ describe('cn (className utility)', () => {
       const isDisabled = false
 
       // clsx handles conditionals internally
-      const result = cn(
-        'base-class',
-        isActive && 'active-class',
-        isDisabled && 'disabled-class'
-      )
+      const result = cn('base-class', isActive && 'active-class', isDisabled && 'disabled-class')
 
       expect(result).toBe('base-class active-class')
     })
