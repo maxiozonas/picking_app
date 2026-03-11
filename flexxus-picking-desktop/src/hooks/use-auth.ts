@@ -12,6 +12,42 @@ interface AuthError {
   errors?: Record<string, string[]>
 }
 
+/**
+ * Authentication hook providing login and logout functionality.
+ * Integrates with Zustand auth store for state management and TanStack Query for mutations.
+ * 
+ * @returns Auth object with login, logout functions and loading state
+ * @returns {function(data: LoginCredentials): void} login - Function to initiate login mutation
+ * @returns {function(): Promise<void>} logout - Function to logout and clear session
+ * @returns {boolean} isLoading - Whether login mutation is in progress
+ * 
+ * @example
+ * ```tsx
+ * const { login, logout, isLoading } = useAuth()
+ * 
+ * // Login
+ * login({ username: 'admin', password: 'secret' })
+ * 
+ * // Logout
+ * await logout()
+ * ```
+ * 
+ * @remarks
+ * - **Login Flow:**
+ *   1. Calls POST /auth/login
+ *   2. Stores token in Zustand store
+ *   3. Clears all TanStack Query caches
+ *   4. Shows success toast and navigates to dashboard
+ * 
+ * - **Logout Flow:**
+ *   1. Calls POST /auth/logout (invalidates server token)
+ *   2. Clears local auth state (always happens, even if server call fails)
+ *   3. Clears all TanStack Query caches
+ *   4. Shows logout toast and navigates to login
+ * 
+ * - **Error Handling:** Shows toast notifications for both login and logout errors
+ * - **Token Format:** Expects { token: { token: string, name, abilities, expires_at }, user }
+ */
 export function useAuth() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()

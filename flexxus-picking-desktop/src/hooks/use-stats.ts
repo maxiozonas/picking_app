@@ -2,10 +2,26 @@ import { useQuery } from '@tanstack/react-query'
 import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import api from '@/lib/api'
 import { DashboardStats } from '@/types/api'
+import { QueryCacheTime } from '@/lib/query-config'
 
 /**
- * Hook to fetch dashboard statistics with optional warehouse and date filters
- * Auto-refetches every 30 seconds for real-time updates
+ * Fetches dashboard statistics with optional warehouse and date filters.
+ * 
+ * @param dateFrom - Optional start date for filtering stats (YYYY-MM-DD format)
+ * @param dateTo - Optional end date for filtering stats (YYYY-MM-DD format)
+ * 
+ * @returns TanStack Query result with DashboardStats data
+ * 
+ * @example
+ * ```tsx
+ * const { data: stats, isLoading, error } = useStats('2026-01-01', '2026-01-31')
+ * ```
+ * 
+ * @remarks
+ * - **Cache Time:** 30 seconds (QueryCacheTime.Stats)
+ * - **No Polling:** Does not auto-refetch - user must trigger refresh manually
+ * - **Warehouse Filter:** Automatically applies selected warehouse from context
+ * - **Query Key:** `['stats', warehouseId, dateFrom, dateTo]`
  */
 export function useStats(dateFrom?: string, dateTo?: string) {
   const selectedWarehouseId = useWarehouseFilterStore((state) => state.selectedWarehouseId)
@@ -30,7 +46,6 @@ export function useStats(dateFrom?: string, dateTo?: string) {
       const response = await api.get(`/admin/stats?${params.toString()}`)
       return response.data
     },
-    refetchInterval: 30000, // Auto-refresh every 30 seconds
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    staleTime: QueryCacheTime.Stats,
   })
 }
