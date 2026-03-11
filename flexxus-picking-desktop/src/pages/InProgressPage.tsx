@@ -6,7 +6,7 @@ import { AlertTriangle } from 'lucide-react'
 export function InProgressPage() {
   const queryClient = useQueryClient()
 
-  const { data, isLoading, isError, error } = useOrders({
+  const { data, isLoading, isPlaceholderData, isError, error } = useOrders({
     status: 'in_progress',
   })
 
@@ -49,7 +49,7 @@ export function InProgressPage() {
             Seguimiento de pedidos actualmente en preparación
           </p>
         </div>
-        {data && (
+        {data && !isPlaceholderData && (
           <div className="text-right">
             <p className="font-display text-2xl font-bold tabular-nums text-blue-400">
               {data.meta.total}
@@ -61,7 +61,7 @@ export function InProgressPage() {
         )}
       </div>
 
-      <OrdersTable orders={data?.data || []} isLoading={isLoading} onRefresh={handleRefresh} />
+      <OrdersTable orders={data?.data || []} isLoading={isLoading || isPlaceholderData} onRefresh={handleRefresh} />
     </div>
   )
 }

@@ -22,7 +22,7 @@ export function OrdersPage() {
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  const { data, isLoading, isError, error } = usePendingOrders({
+  const { data, isLoading, isPlaceholderData, isError, error } = usePendingOrders({
     search: debouncedSearch || undefined,
     status: statusFilter,
     page: currentPage,
@@ -45,7 +45,9 @@ export function OrdersPage() {
           <AlertTriangle className="h-5 w-5 text-red-400" />
           <div>
             <p className="font-medium text-red-400">Error al cargar pedidos</p>
-            <p className="text-sm text-muted-foreground">{error?.message || 'Ha ocurrido un error desconocido'}</p>
+            <p className="text-sm text-muted-foreground">
+              {error?.message || 'Ha ocurrido un error desconocido'}
+            </p>
           </div>
         </div>
       </div>
@@ -61,7 +63,7 @@ export function OrdersPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestión de pedidos de picking</p>
         </div>
-        {data && (
+        {data && !isPlaceholderData && (
           <div className="text-right">
             <p className="font-display text-2xl font-bold tabular-nums text-amber-400">
               {data.meta.total}
@@ -85,11 +87,7 @@ export function OrdersPage() {
         </div>
       </div>
 
-      <OrdersTable
-        orders={data?.data || []}
-        isLoading={isLoading}
-        onRefresh={handleRefresh}
-      />
+      <OrdersTable orders={data?.data || []} isLoading={isLoading || isPlaceholderData} onRefresh={handleRefresh} />
 
       {/* Pagination */}
       {data && data.meta.last_page > 1 && (

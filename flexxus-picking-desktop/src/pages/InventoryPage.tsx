@@ -27,7 +27,7 @@ function MiniBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const color = pct === 0 ? 'bg-red-500' : pct < 50 ? 'bg-amber-400' : 'bg-emerald-500'
   return (
-    <div className="h-1 w-14 rounded-full bg-surface-elevated overflow-hidden">
+    <div className="h-1 w-14 overflow-hidden rounded-full bg-surface-elevated">
       <div className={cn('h-full rounded-full', color)} style={{ width: `${pct}%` }} />
     </div>
   )
@@ -89,7 +89,7 @@ function GroupedInventoryRow({
   const byWarehouse = new Map(group.warehouses.map((w) => [w.warehouse_code, w]))
 
   return (
-    <tr className="border-b border-border hover:bg-surface-elevated/50 transition-colors">
+    <tr className="border-b border-border transition-colors hover:bg-surface-elevated/50">
       {/* Code — no status dot */}
       <td className="px-4 py-3 align-middle">
         <span className="font-mono text-sm font-medium text-foreground">{group.product_code}</span>
@@ -97,7 +97,9 @@ function GroupedInventoryRow({
 
       {/* Description */}
       <td className="px-4 py-3 align-middle">
-        <span className="text-sm text-muted-foreground line-clamp-2">{group.description || '—'}</span>
+        <span className="line-clamp-2 text-sm text-muted-foreground">
+          {group.description || '—'}
+        </span>
       </td>
 
       {/* One TD per warehouse */}
@@ -106,7 +108,7 @@ function GroupedInventoryRow({
         if (!item) {
           return (
             <td key={code} className="px-4 py-3 text-center align-middle">
-              <span className="text-muted-foreground text-xs">—</span>
+              <span className="text-xs text-muted-foreground">—</span>
             </td>
           )
         }
@@ -116,12 +118,17 @@ function GroupedInventoryRow({
         return (
           <td key={code} className="px-4 py-3 align-middle">
             <div className="flex flex-col items-center gap-1">
-              <span className={cn('font-display text-base font-bold tabular-nums leading-none', stockNumClass[st])}>
+              <span
+                className={cn(
+                  'font-display text-base font-bold tabular-nums leading-none',
+                  stockNumClass[st]
+                )}
+              >
                 {total}
               </span>
               <MiniBar value={total} max={maxVal} />
               {item.location && (
-                <span className="font-mono text-[10px] text-muted-foreground border border-border rounded px-1">
+                <span className="rounded border border-border px-1 font-mono text-[10px] text-muted-foreground">
                   {item.location}
                 </span>
               )}
@@ -133,12 +140,12 @@ function GroupedInventoryRow({
       {/* Orders using (sum across warehouses) */}
       <td className="px-4 py-3 text-center align-middle">
         {group.totalOrdersUsing > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 text-xs font-medium">
+          <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
             <Package className="h-3 w-3" />
             {group.totalOrdersUsing}
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">0</span>
+          <span className="text-xs text-muted-foreground">0</span>
         )}
       </td>
     </tr>
@@ -174,7 +181,7 @@ export function InventoryPage() {
     enabled: isSearching,
   })
 
-  const isLoading = isSearching ? searchQuery.isLoading : listQuery.isLoading
+  const isLoading = isSearching ? searchQuery.isLoading : (listQuery.isLoading || listQuery.isPlaceholderData)
   const isError = isSearching ? searchQuery.isError : listQuery.isError
   const error = isSearching ? searchQuery.error : listQuery.error
 
@@ -227,6 +234,7 @@ export function InventoryPage() {
       </div>
 
       {/* Quick stats */}
+      {(!isSearching ? !listQuery.isPlaceholderData : true) && (
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-border bg-surface p-4">
           <div className="flex items-center justify-between">
@@ -235,7 +243,7 @@ export function InventoryPage() {
             </span>
             <Package className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-foreground tabular-nums">
+          <p className="mt-2 font-display text-2xl font-bold tabular-nums text-foreground">
             {totalProducts}
           </p>
           <p className="text-xs text-muted-foreground">en pedidos activos</p>
@@ -248,7 +256,7 @@ export function InventoryPage() {
             </span>
             <TrendingDown className="h-4 w-4 text-amber-400" />
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-amber-400 tabular-nums">
+          <p className="mt-2 font-display text-2xl font-bold tabular-nums text-amber-400">
             {lowStock}
           </p>
           <p className="text-xs text-muted-foreground">menos del doble de demanda</p>
@@ -261,16 +269,17 @@ export function InventoryPage() {
             </span>
             <AlertTriangle className="h-4 w-4 text-red-400" />
           </div>
-          <p className="mt-2 font-display text-2xl font-bold text-red-400 tabular-nums">
+          <p className="mt-2 font-display text-2xl font-bold tabular-nums text-red-400">
             {outOfStock}
           </p>
           <p className="text-xs text-muted-foreground">stock total = 0</p>
         </div>
       </div>
+      )}
 
       {/* Search bar */}
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -289,9 +298,7 @@ export function InventoryPage() {
           )}
         </div>
         {isSearching && (
-          <span className="text-sm text-muted-foreground">
-            Buscando "{debouncedSearch}"
-          </span>
+          <span className="text-sm text-muted-foreground">Buscando "{debouncedSearch}"</span>
         )}
       </div>
 
@@ -311,7 +318,7 @@ export function InventoryPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-surface overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         {/* Legend */}
         <div className="flex items-center gap-6 border-b border-border px-4 py-2.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -343,7 +350,9 @@ export function InventoryPage() {
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <CheckCircle className="mb-3 h-8 w-8 opacity-40" />
             <p className="font-medium">
-              {isSearching ? 'Sin resultados para esa búsqueda' : 'No hay productos en pedidos activos'}
+              {isSearching
+                ? 'Sin resultados para esa búsqueda'
+                : 'No hay productos en pedidos activos'}
             </p>
           </div>
         ) : (
@@ -358,10 +367,15 @@ export function InventoryPage() {
                     Descripción
                   </th>
                   {warehouseColumns.map(({ code, name }) => (
-                    <th key={code} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th
+                      key={code}
+                      className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    >
                       <div className="flex flex-col items-center gap-0.5">
                         <span>{name}</span>
-                        <span className="font-mono text-[10px] normal-case tracking-normal text-muted-foreground/60">{code}</span>
+                        <span className="font-mono text-[10px] normal-case tracking-normal text-muted-foreground/60">
+                          {code}
+                        </span>
                       </div>
                     </th>
                   ))}
@@ -372,7 +386,11 @@ export function InventoryPage() {
               </thead>
               <tbody>
                 {groups.map((group) => (
-                  <GroupedInventoryRow key={group.product_code} group={group} warehouseColumns={warehouseColumns} />
+                  <GroupedInventoryRow
+                    key={group.product_code}
+                    group={group}
+                    warehouseColumns={warehouseColumns}
+                  />
                 ))}
               </tbody>
             </table>
