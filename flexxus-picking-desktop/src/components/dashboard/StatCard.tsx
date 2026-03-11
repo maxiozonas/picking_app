@@ -10,16 +10,11 @@ interface StatCardProps {
     value: number
     isPositive: boolean
   }
-  accent?: 'amber' | 'blue' | 'green' | 'red'
+  accent?: 'blue' | 'green' | 'red'
   className?: string
 }
 
 const accentMap = {
-  amber: {
-    icon: 'text-amber-400',
-    value: 'text-amber-400',
-    glow: 'bg-amber-400/10 border-amber-400/20',
-  },
   blue: {
     icon: 'text-blue-400',
     value: 'text-blue-400',
@@ -39,7 +34,7 @@ export function StatCard({
   icon: Icon,
   description,
   trend,
-  accent = 'amber',
+  accent = 'red',
   className,
 }: StatCardProps) {
   const colors = accentMap[accent]

@@ -18,14 +18,14 @@ function getStockStatus(item: InventoryItem): StockStatus {
 
 const stockNumClass: Record<StockStatus, string> = {
   ok: 'text-emerald-400',
-  low: 'text-amber-400',
+  low: 'text-red-400',
   out: 'text-red-400',
 }
 
 // Tiny horizontal bar for each warehouse chip
 function MiniBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
-  const color = pct === 0 ? 'bg-red-500' : pct < 50 ? 'bg-amber-400' : 'bg-emerald-500'
+  const color = pct === 0 ? 'bg-red-500' : pct < 50 ? 'bg-red-400' : 'bg-emerald-500'
   return (
     <div className="h-1 w-14 overflow-hidden rounded-full bg-surface-elevated">
       <div className={cn('h-full rounded-full', color)} style={{ width: `${pct}%` }} />
@@ -140,7 +140,7 @@ function GroupedInventoryRow({
       {/* Orders using (sum across warehouses) */}
       <td className="px-4 py-3 text-center align-middle">
         {group.totalOrdersUsing > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+          <span className="inline-flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
             <Package className="h-3 w-3" />
             {group.totalOrdersUsing}
           </span>
@@ -249,14 +249,14 @@ export function InventoryPage() {
           <p className="text-xs text-muted-foreground">en pedidos activos</p>
         </div>
 
-        <div className="rounded-lg border border-amber-500/20 bg-surface p-4">
+        <div className="rounded-lg border border-red-500/20 bg-surface p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Stock Bajo
             </span>
-            <TrendingDown className="h-4 w-4 text-amber-400" />
+            <TrendingDown className="h-4 w-4 text-red-400" />
           </div>
-          <p className="mt-2 font-display text-2xl font-bold tabular-nums text-amber-400">
+          <p className="mt-2 font-display text-2xl font-bold tabular-nums text-red-400">
             {lowStock}
           </p>
           <p className="text-xs text-muted-foreground">menos del doble de demanda</p>
@@ -326,7 +326,7 @@ export function InventoryPage() {
             Stock OK
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <span className="h-2 w-2 rounded-full bg-red-400" />
             Stock Bajo
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

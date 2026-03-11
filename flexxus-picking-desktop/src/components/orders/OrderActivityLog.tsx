@@ -16,8 +16,8 @@ const eventConfig = {
   },
   item_picked: {
     icon: Package,
-    color: 'text-amber-400',
-    dot: 'bg-amber-400',
+    color: 'text-red-400',
+    dot: 'bg-red-400',
     label: 'Items pickeados',
   },
   item_completed: {

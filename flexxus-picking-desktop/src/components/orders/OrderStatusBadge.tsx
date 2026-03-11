@@ -25,7 +25,7 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
   },
   has_issues: {
     label: 'Con Alertas',
-    className: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    className: 'border-red-500/30 bg-red-500/10 text-red-400',
   },
 }
 

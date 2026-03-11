@@ -78,7 +78,7 @@ export function OrderDetailHeader({
                     completedPercentage >= 100
                       ? 'bg-emerald-500'
                       : completedPercentage > 0
-                        ? 'bg-amber-400'
+                        ? 'bg-red-400'
                         : 'bg-border'
                   }`}
                   style={{ width: `${Math.min(100, completedPercentage)}%` }}

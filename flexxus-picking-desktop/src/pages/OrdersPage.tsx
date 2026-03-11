@@ -65,7 +65,7 @@ export function OrdersPage() {
         </div>
         {data && !isPlaceholderData && (
           <div className="text-right">
-            <p className="font-display text-2xl font-bold tabular-nums text-amber-400">
+            <p className="font-display text-2xl font-bold tabular-nums text-primary">
               {data.meta.total}
             </p>
             <p className="text-xs text-muted-foreground">

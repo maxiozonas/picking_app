@@ -478,7 +478,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Maximiliano Ozonas** - *Initial work* - [maxiozonas](https://github.com/maxiozonas)
+- **Maximo Ozonas** - *Initial work* - [maxiozonas](https://github.com/maxiozonas)
 
 ---
 

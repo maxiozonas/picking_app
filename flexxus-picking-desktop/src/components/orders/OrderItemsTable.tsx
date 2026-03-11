@@ -12,7 +12,7 @@ function PickStatusIcon({ status }: { status: PickingOrderItem['status'] }) {
     case 'completed':
       return <Check className="h-3.5 w-3.5 text-emerald-400" />
     case 'in_progress':
-      return <Minus className="h-3.5 w-3.5 text-amber-400" />
+      return <Minus className="h-3.5 w-3.5 text-red-400" />
     case 'issue_reported':
       return <AlertOctagon className="h-3.5 w-3.5 text-red-400" />
     default:
@@ -98,7 +98,7 @@ export function OrderItemsTable({ items, className }: OrderItemsTableProps) {
                       item.picked_quantity >= item.quantity
                         ? 'text-emerald-400'
                         : item.picked_quantity > 0
-                          ? 'text-amber-400'
+                          ? 'text-red-400'
                           : 'text-muted-foreground'
                     )}
                   >

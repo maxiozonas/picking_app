@@ -19,10 +19,10 @@ const alertConfig = {
   },
   medium: {
     icon: AlertTriangle,
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/5',
-    borderColor: 'border-amber-500/20',
-    badge: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/5',
+    borderColor: 'border-red-500/20',
+    badge: 'border-red-500/30 bg-red-500/10 text-red-400',
   },
   low: {
     icon: Info,

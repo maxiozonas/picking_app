@@ -29,7 +29,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
         value={stats?.total_orders ?? 0}
         icon={Package}
         description="Pedidos del periodo"
-        accent="amber"
+        accent="red"
       />
       <StatCard
         title="En Proceso"
