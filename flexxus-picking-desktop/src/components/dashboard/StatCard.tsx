@@ -15,10 +15,22 @@ interface StatCardProps {
 }
 
 const accentMap = {
-  amber: { icon: 'text-amber-400', value: 'text-amber-400', glow: 'bg-amber-400/10 border-amber-400/20' },
-  blue:  { icon: 'text-blue-400',  value: 'text-blue-400',  glow: 'bg-blue-400/10 border-blue-400/20'   },
-  green: { icon: 'text-emerald-400', value: 'text-emerald-400', glow: 'bg-emerald-400/10 border-emerald-400/20' },
-  red:   { icon: 'text-red-400',   value: 'text-red-400',   glow: 'bg-red-400/10 border-red-400/20'     },
+  amber: {
+    icon: 'text-amber-400',
+    value: 'text-amber-400',
+    glow: 'bg-amber-400/10 border-amber-400/20',
+  },
+  blue: {
+    icon: 'text-blue-400',
+    value: 'text-blue-400',
+    glow: 'bg-blue-400/10 border-blue-400/20',
+  },
+  green: {
+    icon: 'text-emerald-400',
+    value: 'text-emerald-400',
+    glow: 'bg-emerald-400/10 border-emerald-400/20',
+  },
+  red: { icon: 'text-red-400', value: 'text-red-400', glow: 'bg-red-400/10 border-red-400/20' },
 }
 
 export function StatCard({
@@ -52,9 +64,7 @@ export function StatCard({
         {value}
       </p>
 
-      {description && (
-        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
 
       {trend && (
         <p

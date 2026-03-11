@@ -59,7 +59,7 @@ export function AlertTimelineModal({ alerts, open, onClose }: AlertTimelineModal
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg max-h-[80vh] rounded-lg border border-border bg-background shadow-2xl flex flex-col">
+      <div className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg border border-border bg-background shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
@@ -67,7 +67,8 @@ export function AlertTimelineModal({ alerts, open, onClose }: AlertTimelineModal
               Timeline de Alertas
             </h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {sorted.length} alerta{sorted.length !== 1 ? 's' : ''} registrada{sorted.length !== 1 ? 's' : ''}
+              {sorted.length} alerta{sorted.length !== 1 ? 's' : ''} registrada
+              {sorted.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button
@@ -88,7 +89,7 @@ export function AlertTimelineModal({ alerts, open, onClose }: AlertTimelineModal
           ) : (
             <div className="relative space-y-0">
               {/* Vertical line */}
-              <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+              <div className="absolute bottom-2 left-[15px] top-2 w-px bg-border" />
 
               {sorted.map((alert) => {
                 const config = getConfig(alert.severity)
@@ -114,7 +115,7 @@ export function AlertTimelineModal({ alerts, open, onClose }: AlertTimelineModal
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-1.5 pt-1">
+                    <div className="min-w-0 flex-1 space-y-1.5 pt-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm text-foreground/90">{alert.message}</p>
                         {isResolved && (
@@ -146,7 +147,9 @@ export function AlertTimelineModal({ alerts, open, onClose }: AlertTimelineModal
                       {isResolved && alert.resolved_at && (
                         <div className="mt-1 rounded border border-emerald-500/10 bg-emerald-500/5 px-2.5 py-1.5 text-xs">
                           <span className="text-emerald-400">Resuelta: </span>
-                          <span className="text-muted-foreground">{formatDate(alert.resolved_at)}</span>
+                          <span className="text-muted-foreground">
+                            {formatDate(alert.resolved_at)}
+                          </span>
                           {alert.resolution_notes && (
                             <p className="mt-0.5 text-muted-foreground">{alert.resolution_notes}</p>
                           )}

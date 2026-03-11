@@ -23,14 +23,19 @@ function PickStatusIcon({ status }: { status: PickingOrderItem['status'] }) {
 export function OrderItemsTable({ items, className }: OrderItemsTableProps) {
   if (items.length === 0) {
     return (
-      <div className={cn('flex flex-col items-center justify-center py-10 text-muted-foreground', className)}>
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center py-10 text-muted-foreground',
+          className
+        )}
+      >
         <p className="text-sm">No hay items en este pedido</p>
       </div>
     )
   }
 
   return (
-    <div className={cn('rounded-lg border border-border bg-surface overflow-hidden', className)}>
+    <div className={cn('overflow-hidden rounded-lg border border-border bg-surface', className)}>
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-border">
@@ -69,15 +74,20 @@ export function OrderItemsTable({ items, className }: OrderItemsTableProps) {
                   <PickStatusIcon status={item.status} />
                 </td>
                 <td className="px-4 py-3">
-                  <span className={cn('font-mono text-sm', isComplete ? 'text-muted-foreground' : 'text-foreground')}>
+                  <span
+                    className={cn(
+                      'font-mono text-sm',
+                      isComplete ? 'text-muted-foreground' : 'text-foreground'
+                    )}
+                  >
                     {item.product_code}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs">
+                <td className="max-w-xs px-4 py-3 text-sm text-muted-foreground">
                   <span className="line-clamp-1">{item.description || '—'}</span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="font-mono text-sm font-medium text-foreground tabular-nums">
+                  <span className="font-mono text-sm font-medium tabular-nums text-foreground">
                     {item.quantity}
                   </span>
                 </td>
@@ -88,8 +98,8 @@ export function OrderItemsTable({ items, className }: OrderItemsTableProps) {
                       item.picked_quantity >= item.quantity
                         ? 'text-emerald-400'
                         : item.picked_quantity > 0
-                        ? 'text-amber-400'
-                        : 'text-muted-foreground'
+                          ? 'text-amber-400'
+                          : 'text-muted-foreground'
                     )}
                   >
                     {item.picked_quantity}
@@ -97,11 +107,11 @@ export function OrderItemsTable({ items, className }: OrderItemsTableProps) {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {item.location ? (
-                    <span className="inline-flex items-center rounded border border-border bg-surface-elevated px-2 py-0.5 text-xs font-mono text-muted-foreground">
+                    <span className="inline-flex items-center rounded border border-border bg-surface-elevated px-2 py-0.5 font-mono text-xs text-muted-foreground">
                       {item.location}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
+                    <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </td>
               </tr>

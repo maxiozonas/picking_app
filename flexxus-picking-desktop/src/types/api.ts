@@ -63,7 +63,12 @@ export interface PickingAlert {
   user?: { id: number; name: string } | null
 }
 
-export type AlertType = 'stock_issue' | 'product_not_found' | 'quantity_mismatch' | 'over_pick_attempt' | string
+export type AlertType =
+  | 'stock_issue'
+  | 'product_not_found'
+  | 'quantity_mismatch'
+  | 'over_pick_attempt'
+  | string
 
 // Matches AdminOrderDetailResource: extends PickingOrder + items + alerts + calculated fields
 export interface PickingOrderEvent {

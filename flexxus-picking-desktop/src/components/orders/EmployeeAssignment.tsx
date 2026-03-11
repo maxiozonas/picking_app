@@ -30,9 +30,7 @@ export function EmployeeAssignment({ employee }: EmployeeAssignmentProps) {
           </div>
           <div>
             <p className="font-medium text-foreground">{employee.name}</p>
-            {employee.email && (
-              <p className="text-xs text-muted-foreground">{employee.email}</p>
-            )}
+            {employee.email && <p className="text-xs text-muted-foreground">{employee.email}</p>}
           </div>
         </div>
       ) : (

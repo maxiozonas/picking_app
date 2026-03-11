@@ -35,17 +35,23 @@ const eventConfig = {
 } as const
 
 function getConfig(eventType: string) {
-  return eventConfig[eventType as keyof typeof eventConfig] ?? {
-    icon: Package,
-    color: 'text-muted-foreground',
-    dot: 'bg-muted-foreground',
-    label: eventType,
-  }
+  return (
+    eventConfig[eventType as keyof typeof eventConfig] ?? {
+      icon: Package,
+      color: 'text-muted-foreground',
+      dot: 'bg-muted-foreground',
+      label: eventType,
+    }
+  )
 }
 
 function formatTime(iso: string) {
   try {
-    return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return new Date(iso).toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
   } catch {
     return iso
   }
@@ -61,7 +67,7 @@ export function OrderActivityLog({ events, className }: OrderActivityLogProps) {
       {events.length === 0 ? (
         <p className="text-sm text-muted-foreground">Sin actividad registrada.</p>
       ) : (
-        <ol className="relative border-l border-border ml-2 space-y-0">
+        <ol className="relative ml-2 space-y-0 border-l border-border">
           {events.map((event, idx) => {
             const cfg = getConfig(event.event_type)
             const Icon = cfg.icon
@@ -76,16 +82,16 @@ export function OrderActivityLog({ events, className }: OrderActivityLogProps) {
                   )}
                 />
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2 min-w-0">
+                  <div className="flex min-w-0 items-start gap-2">
                     <Icon className={cn('mt-0.5 h-3.5 w-3.5 flex-shrink-0', cfg.color)} />
                     <div className="min-w-0">
-                      <p className="text-sm text-foreground leading-snug">{event.message}</p>
+                      <p className="text-sm leading-snug text-foreground">{event.message}</p>
                       {event.user && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{event.user.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{event.user.name}</p>
                       )}
                     </div>
                   </div>
-                  <span className="flex-shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
+                  <span className="flex-shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
                     {formatTime(event.created_at)}
                   </span>
                 </div>

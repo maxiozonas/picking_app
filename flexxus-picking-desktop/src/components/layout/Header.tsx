@@ -25,7 +25,7 @@ export function Header() {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-5">
       <div className="flex items-center gap-3">
-        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
         <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Panel de Administración
         </span>
@@ -42,7 +42,9 @@ export function Header() {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="text-xs text-muted-foreground">{user?.email}</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            {user?.email}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />

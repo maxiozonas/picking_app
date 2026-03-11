@@ -21,10 +21,10 @@ export function Sidebar() {
           <Boxes className="h-4 w-4 text-primary-foreground" />
         </div>
         <div>
-          <p className="font-display text-base font-bold uppercase tracking-wide text-foreground leading-none">
+          <p className="font-display text-base font-bold uppercase leading-none tracking-wide text-foreground">
             Flexxus
           </p>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground leading-none mt-0.5">
+          <p className="mt-0.5 text-[10px] font-medium uppercase leading-none tracking-widest text-muted-foreground">
             Picking Admin
           </p>
         </div>
@@ -46,7 +46,7 @@ export function Sidebar() {
               className={cn(
                 'group flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
                   : 'border-l-2 border-transparent text-muted-foreground hover:bg-surface-elevated hover:text-foreground'
               )}
             >

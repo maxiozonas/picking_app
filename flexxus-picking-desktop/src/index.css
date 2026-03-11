@@ -7,37 +7,37 @@
 @layer base {
   :root {
     /* ── Industrial Command Center dark theme ── */
-    --background:        216 14% 5%;        /* #0B0D0F - deep near-black */
-    --surface:           218 12% 8%;        /* #131518 - card surfaces   */
-    --surface-elevated:  218 11% 11%;       /* #1A1D22 - elevated panels */
+    --background: 216 14% 5%; /* #0B0D0F - deep near-black */
+    --surface: 218 12% 8%; /* #131518 - card surfaces   */
+    --surface-elevated: 218 11% 11%; /* #1A1D22 - elevated panels */
 
-    --foreground:        214 12% 90%;       /* #E2E6EC - warm near-white */
-    --muted-foreground:  214 8%  52%;       /* #828899 - secondary text  */
+    --foreground: 214 12% 90%; /* #E2E6EC - warm near-white */
+    --muted-foreground: 214 8% 52%; /* #828899 - secondary text  */
 
     /* Amber accent — industrial scanner/indicator light */
-    --primary:           38  92% 50%;       /* #F59E0B */
-    --primary-foreground:38  60% 8%;        /* dark text on amber bg    */
+    --primary: 38 92% 50%; /* #F59E0B */
+    --primary-foreground: 38 60% 8%; /* dark text on amber bg    */
 
-    --secondary:         218 11% 14%;
+    --secondary: 218 11% 14%;
     --secondary-foreground: 214 12% 90%;
 
-    --muted:             218 11% 13%;
-    --accent:            218 11% 14%;
+    --muted: 218 11% 13%;
+    --accent: 218 11% 14%;
     --accent-foreground: 214 12% 90%;
 
-    --destructive:       0   72% 51%;       /* #EF4444 */
+    --destructive: 0 72% 51%; /* #EF4444 */
     --destructive-foreground: 0 0% 98%;
 
-    --card:              218 12% 8%;
-    --card-foreground:   214 12% 90%;
+    --card: 218 12% 8%;
+    --card-foreground: 214 12% 90%;
 
-    --popover:           218 12% 10%;
+    --popover: 218 12% 10%;
     --popover-foreground: 214 12% 90%;
 
-    --border:            216 10% 16%;       /* #252830 */
-    --input:             216 10% 14%;
-    --ring:              38  92% 50%;
-    --radius:            0.375rem;
+    --border: 216 10% 16%; /* #252830 */
+    --input: 216 10% 14%;
+    --ring: 38 92% 50%;
+    --radius: 0.375rem;
   }
 }
 
@@ -56,12 +56,20 @@
     font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Barlow Condensed', 'IBM Plex Sans', sans-serif;
     letter-spacing: 0.01em;
   }
 
-  .font-mono, code, kbd, pre {
+  .font-mono,
+  code,
+  kbd,
+  pre {
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
   }
 }
@@ -91,8 +99,9 @@
 
   /* Amber glow for focus/active states */
   .glow-primary {
-    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4),
-                0 0 12px hsl(var(--primary) / 0.15);
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.4),
+      0 0 12px hsl(var(--primary) / 0.15);
   }
 
   /* Scanline overlay for "industrial terminal" feel on login etc */
@@ -104,8 +113,8 @@
       0deg,
       transparent,
       transparent 2px,
-      rgba(0,0,0,0.03) 2px,
-      rgba(0,0,0,0.03) 4px
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
     );
     pointer-events: none;
   }

@@ -34,22 +34,12 @@ function unwrapLaravelEnvelope(response: AxiosResponse): AxiosResponse {
   const body = response.data
 
   // Leave paginated responses intact — they have data[] + meta
-  if (
-    body &&
-    typeof body === 'object' &&
-    Array.isArray(body.data) &&
-    body.meta != null
-  ) {
+  if (body && typeof body === 'object' && Array.isArray(body.data) && body.meta != null) {
     return response
   }
 
   // Unwrap { success: true, data: { ... } } (double-wrapped resources like auth)
-  if (
-    body &&
-    typeof body === 'object' &&
-    'success' in body &&
-    'data' in body
-  ) {
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
     response.data = body.data
     return response
   }

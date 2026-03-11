@@ -58,7 +58,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-surface p-5 space-y-3">
+    <div className="space-y-3 rounded-lg border border-border bg-surface p-5">
       <div className="flex items-center justify-between">
         <div className="h-3 w-24 animate-pulse rounded bg-surface-elevated" />
         <div className="h-8 w-8 animate-pulse rounded bg-surface-elevated" />

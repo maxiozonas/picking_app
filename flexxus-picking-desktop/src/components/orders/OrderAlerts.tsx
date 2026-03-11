@@ -41,9 +41,12 @@ export function OrderAlerts({ alerts, className }: OrderAlertsProps) {
   const [showTimeline, setShowTimeline] = useState(false)
 
   // Get the latest alert by created_at
-  const latestAlert = alerts.length > 0
-    ? [...alerts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-    : null
+  const latestAlert =
+    alerts.length > 0
+      ? [...alerts].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0]
+      : null
 
   return (
     <>
@@ -78,24 +81,27 @@ export function OrderAlerts({ alerts, className }: OrderAlertsProps) {
 
             return (
               <div
-                className={cn(
-                  'flex gap-3 rounded border p-3',
-                  config.bgColor,
-                  config.borderColor
-                )}
+                className={cn('flex gap-3 rounded border p-3', config.bgColor, config.borderColor)}
               >
-                <Icon className={cn('h-4 w-4 flex-shrink-0 mt-0.5', config.color)} />
-                <div className="flex-1 space-y-1 min-w-0">
+                <Icon className={cn('mt-0.5 h-4 w-4 flex-shrink-0', config.color)} />
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm text-foreground/90">{latestAlert.message}</p>
                     {isResolved && (
-                      <span className={cn('flex-shrink-0 rounded border px-1.5 py-0.5 text-xs', config.badge)}>
+                      <span
+                        className={cn(
+                          'flex-shrink-0 rounded border px-1.5 py-0.5 text-xs',
+                          config.badge
+                        )}
+                      >
                         Resuelta
                       </span>
                     )}
                   </div>
                   {latestAlert.product_code && (
-                    <p className="font-mono text-xs text-muted-foreground">{latestAlert.product_code}</p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {latestAlert.product_code}
+                    </p>
                   )}
                   <p className="text-xs text-muted-foreground">
                     {new Date(latestAlert.created_at).toLocaleString('es-AR')}

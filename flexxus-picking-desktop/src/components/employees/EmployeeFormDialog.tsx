@@ -12,7 +12,13 @@ interface EmployeeFormDialogProps {
   isLoading?: boolean
 }
 
-export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoading }: EmployeeFormDialogProps) {
+export function EmployeeFormDialog({
+  open,
+  onClose,
+  onSubmit,
+  employee,
+  isLoading,
+}: EmployeeFormDialogProps) {
   const { data: warehouses = [] } = useWarehouses()
   const isEditing = !!employee
 
@@ -81,8 +87,8 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
   }
 
   const updateField = <K extends keyof EmployeeFormData>(key: K, value: EmployeeFormData[K]) => {
-    setForm(prev => ({ ...prev, [key]: value }))
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }))
+    setForm((prev) => ({ ...prev, [key]: value }))
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: '' }))
   }
 
   return (
@@ -111,7 +117,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
             <input
               type="text"
               value={form.username}
-              onChange={e => updateField('username', e.target.value)}
+              onChange={(e) => updateField('username', e.target.value)}
               className={cn(
                 'flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary',
                 errors.username ? 'border-red-500' : 'border-input'
@@ -129,7 +135,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
             <input
               type="text"
               value={form.name}
-              onChange={e => updateField('name', e.target.value)}
+              onChange={(e) => updateField('name', e.target.value)}
               className={cn(
                 'flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary',
                 errors.name ? 'border-red-500' : 'border-input'
@@ -147,7 +153,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
             <input
               type="email"
               value={form.email}
-              onChange={e => updateField('email', e.target.value)}
+              onChange={(e) => updateField('email', e.target.value)}
               className={cn(
                 'flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary',
                 errors.email ? 'border-red-500' : 'border-input'
@@ -160,12 +166,17 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
           {/* Password */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Contraseña {isEditing && <span className="normal-case tracking-normal text-muted-foreground">(dejar vacío para mantener)</span>}
+              Contraseña{' '}
+              {isEditing && (
+                <span className="normal-case tracking-normal text-muted-foreground">
+                  (dejar vacío para mantener)
+                </span>
+              )}
             </label>
             <input
               type="password"
               value={form.password ?? ''}
-              onChange={e => updateField('password', e.target.value)}
+              onChange={(e) => updateField('password', e.target.value)}
               className={cn(
                 'flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary',
                 errors.password ? 'border-red-500' : 'border-input'
@@ -184,7 +195,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
               </label>
               <select
                 value={form.role}
-                onChange={e => {
+                onChange={(e) => {
                   const role = e.target.value as 'admin' | 'empleado'
                   updateField('role', role)
                   if (role === 'admin') updateField('warehouse_id', null)
@@ -203,7 +214,9 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
               </label>
               <select
                 value={form.warehouse_id ?? ''}
-                onChange={e => updateField('warehouse_id', e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) =>
+                  updateField('warehouse_id', e.target.value ? Number(e.target.value) : null)
+                }
                 disabled={form.role === 'admin'}
                 className={cn(
                   'flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50',
@@ -211,7 +224,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
                 )}
               >
                 <option value="">Seleccionar...</option>
-                {warehouses.map(wh => (
+                {warehouses.map((wh) => (
                   <option key={wh.id} value={wh.id}>
                     {wh.code} — {wh.name}
                   </option>
@@ -236,9 +249,7 @@ export function EmployeeFormDialog({ open, onClose, onSubmit, employee, isLoadin
               <span
                 className={cn(
                   'absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all',
-                  form.is_active
-                    ? 'left-[18px] bg-primary'
-                    : 'left-0.5 bg-muted-foreground'
+                  form.is_active ? 'left-[18px] bg-primary' : 'left-0.5 bg-muted-foreground'
                 )}
               />
             </button>

@@ -44,13 +44,17 @@ export function WarehouseStats({ stats, isLoading }: WarehouseStatsProps) {
               </div>
               <div>
                 <p className="font-medium text-foreground">{warehouse.warehouse_name}</p>
-                <p className="text-xs font-mono text-muted-foreground">{warehouse.warehouse_code}</p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {warehouse.warehouse_code}
+                </p>
               </div>
             </div>
 
             <div className="flex gap-8">
               <div className="text-center">
-                <p className="font-display text-xl font-bold tabular-nums text-foreground">{warehouse.total_orders}</p>
+                <p className="font-display text-xl font-bold tabular-nums text-foreground">
+                  {warehouse.total_orders}
+                </p>
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
               <div className="text-center">

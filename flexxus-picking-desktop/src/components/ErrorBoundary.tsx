@@ -12,10 +12,7 @@ interface ErrorBoundaryProps {
   fallback?: React.ReactNode
 }
 
-export class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -36,7 +33,7 @@ export class ErrorBoundary extends React.Component<
       }
 
       return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex min-h-screen items-center justify-center bg-background">
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="text-destructive">Algo salió mal</CardTitle>
@@ -48,15 +45,12 @@ export class ErrorBoundary extends React.Component<
               {this.state.error && (
                 <details className="text-xs text-muted-foreground">
                   <summary className="cursor-pointer">Ver detalles del error</summary>
-                  <pre className="mt-2 p-2 rounded bg-muted overflow-auto">
+                  <pre className="mt-2 overflow-auto rounded bg-muted p-2">
                     {this.state.error.message}
                   </pre>
                 </details>
               )}
-              <Button
-                onClick={() => window.location.reload()}
-                className="w-full"
-              >
+              <Button onClick={() => window.location.reload()} className="w-full">
                 Recargar página
               </Button>
             </CardContent>

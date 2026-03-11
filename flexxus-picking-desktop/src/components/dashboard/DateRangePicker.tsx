@@ -25,13 +25,13 @@ export function DateRangePicker({
           Desde
         </Label>
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="date-from"
             type="date"
             value={dateFrom}
             onChange={(e) => onDateFromChange(e.target.value)}
-            className="pl-9 w-[160px]"
+            className="w-[160px] pl-9"
           />
         </div>
       </div>
@@ -41,13 +41,13 @@ export function DateRangePicker({
           Hasta
         </Label>
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="date-to"
             type="date"
             value={dateTo}
             onChange={(e) => onDateToChange(e.target.value)}
-            className="pl-9 w-[160px]"
+            className="w-[160px] pl-9"
           />
         </div>
       </div>

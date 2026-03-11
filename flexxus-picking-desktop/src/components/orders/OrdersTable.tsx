@@ -33,10 +33,13 @@ function formatDateRelative(dateString: string): string {
 export function OrdersTable({ orders, onRefresh, isLoading = false, className }: OrdersTableProps) {
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-border bg-surface overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="space-y-px">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-0">
+            <div
+              key={i}
+              className="flex items-center gap-4 border-b border-border px-4 py-3.5 last:border-0"
+            >
               <div className="h-4 w-28 animate-pulse rounded bg-surface-elevated" />
               <div className="h-4 flex-1 animate-pulse rounded bg-surface-elevated" />
               <div className="h-5 w-20 animate-pulse rounded bg-surface-elevated" />
@@ -58,7 +61,9 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
   }
 
   return (
-    <div className={`rounded-lg border border-border bg-surface overflow-hidden ${className ?? ''}`}>
+    <div
+      className={`overflow-hidden rounded-lg border border-border bg-surface ${className ?? ''}`}
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
@@ -75,7 +80,10 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
           </thead>
           <tbody className="divide-y divide-border">
             {orders.map((order) => (
-              <tr key={order.order_number} className="hover:bg-surface-elevated/60 transition-colors">
+              <tr
+                key={order.order_number}
+                className="transition-colors hover:bg-surface-elevated/60"
+              >
                 <td className="px-4 py-3">
                   <span className="font-mono text-sm font-medium text-foreground">
                     {order.order_number}
@@ -98,8 +106,10 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
-                  {order.started_at ? formatDateRelative(order.started_at) : (
+                <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">
+                  {order.started_at ? (
+                    formatDateRelative(order.started_at)
+                  ) : (
                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
                       <Clock className="h-3 w-3" />
                       Sin iniciar
