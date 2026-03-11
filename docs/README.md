@@ -20,6 +20,12 @@ Welcome to the Picking App documentation. This directory contains comprehensive 
   - Security and encryption details
   - Performance considerations
 
+- **[Desktop UI Theme](./desktop-ui-theme.md)**
+  - CSS custom property token architecture
+  - Corporate red palette specification
+  - Primary vs destructive differentiation strategy
+  - Component color conventions
+
 ### Features & Mechanisms
 
 - **[Warehouse Override Mechanism](./warehouse-override-mechanism.md)**
