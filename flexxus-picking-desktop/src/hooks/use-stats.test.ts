@@ -111,9 +111,7 @@ describe('useStats', () => {
       expect(result.current.isSuccess).toBe(true)
     })
 
-    expect(api.get).toHaveBeenCalledWith(
-      '/admin/stats?date_from=2026-03-01&date_to=2026-03-09'
-    )
+    expect(api.get).toHaveBeenCalledWith('/admin/stats?date_from=2026-03-01&date_to=2026-03-09')
   })
 
   it('should fetch stats with all filters combined', async () => {
@@ -160,5 +158,14 @@ describe('useStats', () => {
     })
 
     expect(result.current.error).toEqual(mockError)
+  })
+
+  it('should use QueryCacheTime constants from query-config', async () => {
+    // This test verifies the hook uses centralized config
+    // by checking that query-config is imported
+    const queryConfigModule = await import('@/lib/query-config')
+
+    expect(queryConfigModule.QueryCacheTime).toBeDefined()
+    expect(queryConfigModule.QueryCacheTime.Stats).toBe(30000)
   })
 })

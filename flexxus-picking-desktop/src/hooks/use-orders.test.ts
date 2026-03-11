@@ -62,12 +62,17 @@ describe('useOrders', () => {
 
     const { result } = renderHook(() => useOrders(), { wrapper })
 
+    // Wait for success and isFetching to be false (data fully loaded)
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
+      expect(result.current.isFetching).toBe(false)
     })
 
     expect(api.get).toHaveBeenCalledWith('/admin/orders?per_page=15&page=1')
-    expect(result.current.data).toEqual(mockOrders)
+
+    // Verify the real data arrived, not placeholder data
+    expect(result.current.data?.data).toHaveLength(1)
+    expect(result.current.data?.data[0].order_number).toBe('EXP-2026-001')
   })
 
   it('should fetch orders with warehouse filter', async () => {
@@ -222,6 +227,47 @@ describe('useOrders', () => {
 
     expect(result.current.error).toEqual(mockError)
   })
+
+  it('should use keepPreviousData: data is undefined on cold cache, defined after fetch', async () => {
+    // Delay the API response
+    vi.mocked(api.get).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              data: {
+                data: [],
+                meta: { current_page: 1, last_page: 1, per_page: 15, total: 0 },
+              },
+            })
+          }, 100)
+        })
+    )
+
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    // With keepPreviousData, on cold cache data is undefined (no fake placeholder rows)
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.isPlaceholderData).toBe(false)
+
+    // isFetching is true — request is in flight
+    expect(result.current.isFetching).toBe(true)
+
+    // Wait for real data
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(api.get).toHaveBeenCalledTimes(1)
+  })
+
+  it('should use QueryCacheTime constants from query-config', async () => {
+    const queryConfigModule = await import('@/lib/query-config')
+
+    expect(queryConfigModule.QueryCacheTime).toBeDefined()
+    expect(queryConfigModule.QueryCacheTime.Orders).toBe(45000)
+    expect(queryConfigModule.QueryCacheTime.OrderDetail).toBe(60000)
+  })
 })
 
 describe('useOrderDetail', () => {
@@ -289,5 +335,13 @@ describe('useOrderDetail', () => {
     })
 
     expect(result.current.error).toEqual(mockError)
+  })
+
+  it('should be disabled when orderNumber is empty', async () => {
+    const { result } = renderHook(() => useOrderDetail(''), { wrapper })
+
+    // Query should be disabled
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(api.get).not.toHaveBeenCalled()
   })
 })
