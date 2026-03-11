@@ -13,7 +13,13 @@ import {
   XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee, useWarehouses } from '@/hooks/use-employees'
+import {
+  useEmployees,
+  useCreateEmployee,
+  useUpdateEmployee,
+  useDeleteEmployee,
+  useWarehouses,
+} from '@/hooks/use-employees'
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog'
 import { useToast } from '@/hooks/use-toast'
 import type { Employee, EmployeeFormData } from '@/types/api'
@@ -72,11 +78,17 @@ export function EmployeesPage() {
         { id: editingEmployee.id, data: formData },
         {
           onSuccess: () => {
-            toast({ title: 'Empleado actualizado', description: `${formData.name} fue actualizado correctamente.` })
+            toast({
+              title: 'Empleado actualizado',
+              description: `${formData.name} fue actualizado correctamente.`,
+            })
             setDialogOpen(false)
           },
           onError: (err) => {
-            const message = err instanceof AxiosError ? err.response?.data?.message ?? err.message : 'Error desconocido'
+            const message =
+              err instanceof AxiosError
+                ? (err.response?.data?.message ?? err.message)
+                : 'Error desconocido'
             toast({ title: 'Error al actualizar', description: message, variant: 'destructive' })
           },
         }
@@ -84,11 +96,17 @@ export function EmployeesPage() {
     } else {
       createMutation.mutate(formData, {
         onSuccess: () => {
-          toast({ title: 'Empleado creado', description: `${formData.name} fue creado correctamente.` })
+          toast({
+            title: 'Empleado creado',
+            description: `${formData.name} fue creado correctamente.`,
+          })
           setDialogOpen(false)
         },
         onError: (err) => {
-          const message = err instanceof AxiosError ? err.response?.data?.message ?? err.message : 'Error desconocido'
+          const message =
+            err instanceof AxiosError
+              ? (err.response?.data?.message ?? err.message)
+              : 'Error desconocido'
           toast({ title: 'Error al crear', description: message, variant: 'destructive' })
         },
       })
@@ -107,7 +125,10 @@ export function EmployeesPage() {
         setDeleteConfirm(null)
       },
       onError: (err) => {
-        const message = err instanceof AxiosError ? err.response?.data?.message ?? err.message : 'Error desconocido'
+        const message =
+          err instanceof AxiosError
+            ? (err.response?.data?.message ?? err.message)
+            : 'Error desconocido'
         toast({ title: 'Error al eliminar', description: message, variant: 'destructive' })
       },
     })
@@ -129,7 +150,9 @@ export function EmployeesPage() {
           <AlertTriangle className="h-5 w-5 text-red-400" />
           <div>
             <p className="font-medium text-red-400">Error al cargar empleados</p>
-            <p className="text-sm text-muted-foreground">{error?.message || 'Ha ocurrido un error desconocido'}</p>
+            <p className="text-sm text-muted-foreground">
+              {error?.message || 'Ha ocurrido un error desconocido'}
+            </p>
           </div>
         </div>
       </div>
@@ -166,9 +189,9 @@ export function EmployeesPage() {
             <input
               type="text"
               value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
+              onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Nombre, usuario o email..."
-              className="flex h-9 w-full rounded-md border border-input bg-transparent pl-10 pr-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent py-2 pl-10 pr-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>
@@ -179,7 +202,10 @@ export function EmployeesPage() {
           </label>
           <select
             value={roleFilter}
-            onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1) }}
+            onChange={(e) => {
+              setRoleFilter(e.target.value)
+              setCurrentPage(1)
+            }}
             className="flex h-9 rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">Todos</option>
@@ -194,7 +220,10 @@ export function EmployeesPage() {
           </label>
           <select
             value={activeFilter}
-            onChange={e => { setActiveFilter(e.target.value); setCurrentPage(1) }}
+            onChange={(e) => {
+              setActiveFilter(e.target.value)
+              setCurrentPage(1)
+            }}
             className="flex h-9 rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">Todos</option>
@@ -210,12 +239,24 @@ export function EmployeesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Empleado</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Rol</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Depósito</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado</th>
-                <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Acciones</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Empleado
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Rol
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Depósito
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Estado
+                </th>
+                <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -237,7 +278,7 @@ export function EmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                employees.map(emp => (
+                employees.map((emp) => (
                   <tr
                     key={emp.id}
                     className="border-b border-border/50 transition-colors hover:bg-surface-elevated/50"
@@ -258,7 +299,11 @@ export function EmployeesPage() {
                             : 'bg-blue-500/10 text-blue-400'
                         )}
                       >
-                        {emp.role === 'admin' ? <ShieldCheck className="h-3 w-3" /> : <HardHat className="h-3 w-3" />}
+                        {emp.role === 'admin' ? (
+                          <ShieldCheck className="h-3 w-3" />
+                        ) : (
+                          <HardHat className="h-3 w-3" />
+                        )}
                         {emp.role === 'admin' ? 'Admin' : 'Empleado'}
                       </span>
                     </td>
@@ -266,7 +311,9 @@ export function EmployeesPage() {
                       {emp.warehouse ? (
                         <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
                           <Warehouse className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-mono text-xs text-primary">{emp.warehouse.code}</span>
+                          <span className="font-mono text-xs text-primary">
+                            {emp.warehouse.code}
+                          </span>
                           <span className="text-muted-foreground">—</span>
                           <span>{emp.warehouse.name}</span>
                         </span>
@@ -323,7 +370,7 @@ export function EmployeesPage() {
           </p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="rounded border border-border px-3 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -333,7 +380,7 @@ export function EmployeesPage() {
               {currentPage} / {meta.last_page}
             </span>
             <button
-              onClick={() => setCurrentPage(p => Math.min(meta.last_page, p + 1))}
+              onClick={() => setCurrentPage((p) => Math.min(meta.last_page, p + 1))}
               disabled={currentPage === meta.last_page}
               className="rounded border border-border px-3 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -355,14 +402,18 @@ export function EmployeesPage() {
       {/* Delete Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteConfirm(null)}
+          />
           <div className="relative z-10 w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-2xl">
             <h3 className="font-display text-lg font-bold uppercase tracking-wide text-foreground">
               Confirmar eliminación
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              ¿Estás seguro de que deseas eliminar a <span className="font-medium text-foreground">{deleteConfirm.name}</span>?
-              Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas eliminar a{' '}
+              <span className="font-medium text-foreground">{deleteConfirm.name}</span>? Esta acción
+              no se puede deshacer.
             </p>
             <div className="mt-5 flex items-center justify-end gap-3">
               <button

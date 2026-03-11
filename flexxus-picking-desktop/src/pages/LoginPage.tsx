@@ -1,16 +1,20 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { useAuth } from '@/hooks/use-auth'
 import { Loader2, Boxes } from 'lucide-react'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'El usuario es requerido'),
-  password: z
-    .string()
-    .min(1, 'La contraseña es requerida')
-    .min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(1, 'La contraseña es requerida').min(6, 'Mínimo 6 caracteres'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -26,7 +30,7 @@ export function LoginPage() {
   const onSubmit = (data: LoginFormData) => login(data)
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background bg-grid px-4 overflow-hidden">
+    <div className="bg-grid relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div className="h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
@@ -35,16 +39,14 @@ export function LoginPage() {
       <div className="relative w-full max-w-sm animate-fade-in">
         {/* Logo block */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
             <Boxes className="h-7 w-7 text-primary" />
           </div>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-foreground">
               Flexxus Picking
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Panel de Administración
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Panel de Administración</p>
           </div>
         </div>
 
@@ -70,7 +72,7 @@ export function LoginPage() {
                         type="text"
                         autoComplete="username"
                         disabled={isLoading}
-                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50 transition-colors"
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
                         {...field}
                       />
                     </FormControl>
@@ -93,7 +95,7 @@ export function LoginPage() {
                         type="password"
                         autoComplete="current-password"
                         disabled={isLoading}
-                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50 transition-colors"
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50"
                         {...field}
                       />
                     </FormControl>

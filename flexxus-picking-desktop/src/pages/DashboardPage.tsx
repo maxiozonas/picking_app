@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useStats } from '@/hooks/use-stats'
-import { StatsCards, WarehouseSelector, DateRangePicker, WarehouseStats } from '@/components/dashboard'
+import {
+  StatsCards,
+  WarehouseSelector,
+  DateRangePicker,
+  WarehouseStats,
+} from '@/components/dashboard'
 import { toast } from '@/hooks/use-toast'
 
 export function DashboardPage() {

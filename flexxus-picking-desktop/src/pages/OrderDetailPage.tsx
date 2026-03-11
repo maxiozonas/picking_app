@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom'
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-4 animate-pulse">
+    <div className="animate-pulse space-y-4">
       <div className="h-24 w-full rounded-lg bg-surface" />
       <div className="grid gap-4 md:grid-cols-2">
         <div className="h-28 rounded-lg bg-surface" />
@@ -88,7 +88,7 @@ export function OrderDetailPage() {
       <div>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Items del Pedido
-          <span className="ml-2 rounded bg-surface px-1.5 py-0.5 font-mono text-xs border border-border">
+          <span className="ml-2 rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-xs">
             {order.items?.length ?? 0}
           </span>
         </p>
