@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import api from '@/lib/api'
 import { PaginatedResponse, PickingOrder, OrderStatus, OrderDetail } from '@/types/api'
+import { QueryCacheTime } from '@/lib/query-config'
 
 export interface UseOrdersParams {
   search?: string
@@ -13,8 +14,33 @@ export interface UseOrdersParams {
 }
 
 /**
- * Hook to fetch orders list with filters and pagination
- * Supports warehouse filter from global context
+ * Fetches paginated list of orders with filters and search capabilities.
+ * 
+ * @param params - Query parameters for filtering and pagination
+ * @param params.search - Search term to filter by order number or customer name
+ * @param params.status - Order status filter ('pending' | 'in_progress' | 'completed')
+ * @param params.page - Page number for pagination (default: 1)
+ * @param params.perPage - Number of items per page (default: 15)
+ * @param params.dateFrom - Start date filter (YYYY-MM-DD format)
+ * @param params.dateTo - End date filter (YYYY-MM-DD format)
+ * 
+ * @returns TanStack Query result with PaginatedResponse<PickingOrder>
+ * 
+ * @example
+ * ```tsx
+ * const { data, isLoading, error } = useOrders({
+ *   status: 'pending',
+ *   page: 1,
+ *   perPage: 15
+ * })
+ * ```
+ * 
+ * @remarks
+ * - **Cache Time:** 45 seconds (QueryCacheTime.Orders)
+ * - **Placeholder Data:** Retains previous page data during pagination transitions (keepPreviousData)
+ * - **Warehouse Filter:** Automatically applies selected warehouse from context
+ * - **Query Key:** `['orders', warehouseId, search, status, page, perPage, dateFrom, dateTo]`
+ * - **UX Feature:** Prevents layout shift during pagination transitions
  */
 export function useOrders(params: UseOrdersParams = {}) {
   const { search, status, page = 1, perPage = 15, dateFrom, dateTo } = params
@@ -51,7 +77,8 @@ export function useOrders(params: UseOrdersParams = {}) {
       const response = await api.get(`/admin/orders?${queryParams.toString()}`)
       return response.data
     },
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    placeholderData: keepPreviousData,
+    staleTime: QueryCacheTime.Orders,
   })
 }
 
@@ -59,7 +86,22 @@ export function useOrders(params: UseOrdersParams = {}) {
 export type { OrderDetail } from '@/types/api'
 
 /**
- * Hook to fetch single order detail with items and alerts
+ * Fetches detailed information for a single order including items and alerts.
+ * 
+ * @param orderNumber - The order number to fetch (e.g., "EXP-2026-001")
+ * 
+ * @returns TanStack Query result with OrderDetail data
+ * 
+ * @example
+ * ```tsx
+ * const { data: order, isLoading, error } = useOrderDetail('EXP-2026-001')
+ * ```
+ * 
+ * @remarks
+ * - **Cache Time:** 60 seconds (QueryCacheTime.OrderDetail)
+ * - **Conditional Fetch:** Only fetches when orderNumber is provided (enabled: !!orderNumber)
+ * - **Query Key:** `['order', orderNumber]`
+ * - **Includes:** Order items with pick status, alerts with severity, employee assignment info
  */
 export function useOrderDetail(orderNumber: string) {
   return useQuery<OrderDetail>({
@@ -68,7 +110,7 @@ export function useOrderDetail(orderNumber: string) {
       const response = await api.get(`/admin/orders/${orderNumber}`)
       return response.data
     },
-    enabled: !!orderNumber, // Only fetch if orderNumber is provided
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    enabled: !!orderNumber,
+    staleTime: QueryCacheTime.OrderDetail,
   })
 }
