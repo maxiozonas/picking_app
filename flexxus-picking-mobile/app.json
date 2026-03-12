@@ -1,27 +1,80 @@
 {
   "expo": {
-    "name": "flexxus-picking-mobile",
+    "name": "Flexxus Picking Mobile",
     "slug": "flexxus-picking-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B0D0F"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "fonts": [
+      {
+        "src": "./assets/fonts/IBM Plex Sans-Regular.ttf",
+        "fontFamily": "IBM Plex Sans",
+        "fontWeight": "400"
+      },
+      {
+        "src": "./assets/fonts/IBM Plex Sans-Medium.ttf",
+        "fontFamily": "IBM Plex Sans",
+        "fontWeight": "500"
+      },
+      {
+        "src": "./assets/fonts/IBM Plex Sans-SemiBold.ttf",
+        "fontFamily": "IBM Plex Sans",
+        "fontWeight": "600"
+      },
+      {
+        "src": "./assets/fonts/Barlow Condensed-Regular.ttf",
+        "fontFamily": "Barlow Condensed",
+        "fontWeight": "400"
+      },
+      {
+        "src": "./assets/fonts/Barlow Condensed-SemiBold.ttf",
+        "fontFamily": "Barlow Condensed",
+        "fontWeight": "600"
+      },
+      {
+        "src": "./assets/fonts/Barlow Condensed-Bold.ttf",
+        "fontFamily": "Barlow Condensed",
+        "fontWeight": "700"
+      },
+      {
+        "src": "./assets/fonts/IBM Plex Mono-Regular.ttf",
+        "fontFamily": "IBM Plex Mono",
+        "fontWeight": "400"
+      }
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0D0F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "statusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#0B0D0F"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:8000/api"
     },
     "web": {
       "favicon": "./assets/favicon.png"
