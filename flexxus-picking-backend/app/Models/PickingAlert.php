@@ -20,6 +20,7 @@ class PickingAlert extends Model
         'is_resolved',
         'resolved_at',
         'resolved_by',
+        'resolution_notes',
     ];
 
     protected $casts = [

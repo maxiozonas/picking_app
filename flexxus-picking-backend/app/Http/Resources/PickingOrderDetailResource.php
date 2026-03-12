@@ -11,7 +11,7 @@ class PickingOrderDetailResource extends JsonResource
     {
         $data = $this->resource;
         $assignedTo = $data['assigned_to'] ?? null;
-        $startedAt = $data['started_at'] ?? '';
+        $startedAt = $data['started_at'] ?? null;
 
         return [
             'order_type' => $data['order_type'] ?? 'NP',
@@ -30,7 +30,7 @@ class PickingOrderDetailResource extends JsonResource
                 'name' => null,
             ],
             'items' => PickingOrderItemResource::collection($data['items'] ?? collect()),
-            'alerts' => $data['alerts'] ?? [],
+            'alerts' => PickingAlertResource::collection(collect($data['alerts'] ?? [])),
             'events' => $data['events'] ?? [],
         ];
     }

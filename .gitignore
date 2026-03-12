@@ -11,6 +11,7 @@ vendor/
 # IDE
 .idea/
 .vscode/
+.atl/
 *.swp
 *.swo
 *~

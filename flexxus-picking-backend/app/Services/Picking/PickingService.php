@@ -88,18 +88,38 @@ class PickingService implements PickingServiceInterface
                 'delivery_type' => 'EXPEDICION',
                 'items_count' => 0,
                 'status' => $progress ? $progress->status : 'pending',
-                'started_at' => $progress?->started_at?->toIso8601String(),
+                'started_at' => $progress?->started_at?->toIso8601String() ?? '',
                 'assigned_to' => $progress && $progress->user
                     ? [
                         'id' => $progress->user->id,
                         'name' => $progress->user->name,
                     ]
-                    : null,
+                    : [
+                        'id' => null,
+                        'name' => null,
+                    ],
                 'items_picked' => $progress
                     ? $progress->items()->where('status', 'completed')->count()
                     : 0,
             ];
         });
+
+        $search = trim((string) ($filters['search'] ?? ''));
+        if ($search !== '') {
+            $searchNumber = preg_replace('/\D+/', '', $search) ?? '';
+
+            $mergedOrders = $mergedOrders->filter(function (array $order) use ($search, $searchNumber) {
+                $customer = mb_strtolower((string) ($order['customer'] ?? ''));
+                $normalizedSearch = mb_strtolower($search);
+                $orderNumber = (string) ($order['order_number'] ?? '');
+
+                if ($searchNumber !== '' && str_contains($orderNumber, $searchNumber)) {
+                    return true;
+                }
+
+                return str_contains($customer, $normalizedSearch);
+            })->values();
+        }
 
         if (isset($filters['status'])) {
             if ($filters['status'] === 'all') {
@@ -111,8 +131,8 @@ class PickingService implements PickingServiceInterface
             );
         }
 
-        $perPage = $filters['per_page'] ?? 15;
-        $page = $filters['page'] ?? 1;
+        $perPage = max(1, min((int) ($filters['per_page'] ?? 20), 100));
+        $page = max(1, (int) ($filters['page'] ?? 1));
         $total = $mergedOrders->count();
         $pagedOrders = $mergedOrders->forPage($page, $perPage)->values();
 
@@ -159,12 +179,13 @@ class PickingService implements PickingServiceInterface
             $items[] = $formattedItem;
         }
 
-        $alerts = $progress ? $progress->alerts()->where('warehouse_id', $context->warehouseId)->get()->map(fn ($a) => [
-            'id' => $a->id,
-            'type' => $a->alert_type,
-            'message' => $a->message,
-            'severity' => $a->severity,
-        ])->toArray() : [];
+        $alerts = $progress
+            ? $progress->alerts()
+                ->where('warehouse_id', $context->warehouseId)
+                ->with(['warehouse', 'reporter'])
+                ->latest('created_at')
+                ->get()
+            : collect();
 
         $events = $progress ? $progress->events()
             ->where('warehouse_id', $context->warehouseId)
@@ -195,12 +216,15 @@ class PickingService implements PickingServiceInterface
             ],
             'total' => (float) ($flexxusOrder['TOTAL'] ?? 0),
             'status' => $progress ? $progress->status : 'pending',
-            'started_at' => $progress?->started_at?->toIso8601String(),
+            'started_at' => $progress?->started_at?->toIso8601String() ?? '',
             'completed_at' => $progress?->completed_at?->toIso8601String(),
             'assigned_to' => $progress ? [
                 'id' => $progress->user->id,
                 'name' => $progress->user->name,
-            ] : null,
+            ] : [
+                'id' => null,
+                'name' => null,
+            ],
             'total_items' => $totalItems,
             'picked_items' => $pickedItems,
             'completed_percentage' => $completedPercentage,
@@ -499,7 +523,7 @@ class PickingService implements PickingServiceInterface
             $progress->save();
         }
 
-        return $alert;
+        return $alert->load(['warehouse', 'reporter']);
     }
 
     public function getAlerts(array $filters = []): LengthAwarePaginator
@@ -510,12 +534,17 @@ class PickingService implements PickingServiceInterface
             $query->where('warehouse_id', $filters['warehouse_id']);
         }
 
-        if (isset($filters['resolved'])) {
-            $query->where('is_resolved', filter_var($filters['resolved'], FILTER_VALIDATE_BOOLEAN));
+        if (isset($filters['status'])) {
+            $isResolved = $filters['status'] === 'resolved';
+            $query->where('is_resolved', $isResolved);
         }
 
         if (isset($filters['severity'])) {
             $query->where('severity', $filters['severity']);
+        }
+
+        if (isset($filters['alert_type'])) {
+            $query->where('alert_type', $filters['alert_type']);
         }
 
         return $query->orderBy('created_at', 'desc')->paginate(15);
@@ -528,6 +557,7 @@ class PickingService implements PickingServiceInterface
         $alert->is_resolved = true;
         $alert->resolved_at = now();
         $alert->resolved_by = $resolverId;
+        $alert->resolution_notes = $notes ?: null;
         $alert->save();
 
         return $alert->load(['warehouse', 'reporter', 'resolver']);
@@ -557,10 +587,13 @@ class PickingService implements PickingServiceInterface
         $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse);
 
         return [
-            'item_code' => $productCode,
+            'item_code'          => $productCode,
             'available_quantity' => $stockInfo['available_quantity'] ?? 0,
-            'location' => $stockInfo['location'] ?? null,
-            'last_updated' => now()->toIso8601String(),
+            'location'           => $stockInfo['location'] ?? null,
+            'last_updated'       => now()->toIso8601String(),
+            'warehouse_id'       => $warehouse->id,
+            'warehouse_code'     => $warehouse->code,
+            'warehouse_name'     => $warehouse->name,
         ];
     }
 }

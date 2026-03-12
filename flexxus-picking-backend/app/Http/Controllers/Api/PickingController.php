@@ -8,6 +8,7 @@ use App\Http\Requests\Picking\CreateAlertRequest;
 use App\Http\Requests\Picking\PickItemRequest;
 use App\Http\Requests\Picking\StartOrderRequest;
 use App\Http\Resources\PickingAlertResource;
+use App\Http\Resources\PickingOrderCollection;
 use App\Http\Resources\PickingOrderDetailResource;
 use App\Http\Resources\PickingOrderResource;
 use App\Services\Picking\PickingServiceInterface;
@@ -21,20 +22,25 @@ class PickingController extends Controller
         private PickingServiceInterface $pickingService
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): PickingOrderCollection
     {
-        $filters = $request->only(['status', 'search']);
+        $filters = array_filter([
+            'status' => $request->input('status'),
+            'search' => $request->input('search'),
+            'page' => $request->integer('page') ?: null,
+            'per_page' => $request->integer('per_page') ?: null,
+        ], fn ($value) => $value !== null && $value !== '');
         $requestContext = array_filter([
             'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
         ], fn ($value) => $value !== null);
 
         $orders = $this->pickingService->getAvailableOrders(
-            auth()->id(),
+            $request->user()->id,
             $filters,
             $requestContext
         );
 
-        return PickingOrderResource::collection($orders);
+        return new PickingOrderCollection($orders);
     }
 
     public function show(string $orderNumber, Request $request): PickingOrderDetailResource
@@ -45,7 +51,7 @@ class PickingController extends Controller
 
         $order = $this->pickingService->getOrderDetail(
             $orderNumber,
-            auth()->id(),
+            $request->user()->id,
             $requestContext
         );
 
@@ -60,7 +66,7 @@ class PickingController extends Controller
 
         $progress = $this->pickingService->startOrder(
             $orderNumber,
-            auth()->id(),
+            $request->user()->id,
             $requestContext
         );
 
@@ -77,7 +83,7 @@ class PickingController extends Controller
             $orderNumber,
             $productCode,
             $request->validated('quantity'),
-            auth()->id(),
+            $request->user()->id,
             $requestContext
         );
 
@@ -94,7 +100,7 @@ class PickingController extends Controller
 
         $progress = $this->pickingService->completeOrder(
             $orderNumber,
-            auth()->id(),
+            $request->user()->id,
             $requestContext
         );
 
@@ -111,7 +117,7 @@ class PickingController extends Controller
             'order_number' => $orderNumber,
         ]);
 
-        $alert = $this->pickingService->createAlert($data, auth()->id(), $requestContext);
+        $alert = $this->pickingService->createAlert($data, $request->user()->id, $requestContext);
 
         return response()->json([
             'data' => new PickingAlertResource($alert),
@@ -136,7 +142,7 @@ class PickingController extends Controller
 
         $alert = $this->pickingService->resolveAlert(
             $id,
-            auth()->id(),
+            $request->user()->id,
             $request->input('notes', ''),
             $requestContext
         );

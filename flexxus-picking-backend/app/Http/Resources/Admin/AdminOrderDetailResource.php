@@ -39,6 +39,17 @@ class AdminOrderDetailResource extends JsonResource
             'created_at' => $progress->created_at?->toIso8601String(),
             'items' => AdminOrderItemResource::collection($progress->items ?? collect()),
             'alerts' => PickingAlertResource::collection($progress->alerts ?? collect()),
+            'events' => ($progress->events ?? collect())->map(fn ($e) => [
+                'id'           => $e->id,
+                'event_type'   => $e->event_type,
+                'product_code' => $e->product_code,
+                'quantity'     => $e->quantity,
+                'message'      => $e->message,
+                'user'         => $e->relationLoaded('user')
+                    ? ['id' => $e->user?->id, 'name' => $e->user?->name]
+                    : null,
+                'created_at'   => $e->created_at?->toIso8601String(),
+            ])->values()->all(),
         ];
     }
 

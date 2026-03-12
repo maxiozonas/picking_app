@@ -60,7 +60,7 @@ class AdminOrdersController extends Controller
         $canonical = OrderNumberParser::normalize($orderNumber);
 
         $order = PickingOrderProgress::where('order_number', $canonical)
-            ->with(['user', 'warehouse', 'items', 'alerts'])
+            ->with(['user', 'warehouse', 'items', 'alerts.reporter', 'alerts.warehouse', 'events.user'])
             ->first();
 
         if ($order) {

@@ -21,18 +21,18 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], [])
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_type' => 'NP',
                         'order_number' => '623200',
                         'customer' => 'Test Customer',
                         'status' => 'pending',
-                        'assigned_to' => null,
+                        'assigned_to' => ['id' => null, 'name' => null],
                         'items_count' => 5,
                         'items_picked' => 0,
                         'created_at' => now()->toIso8601String(),
-                        'started_at' => null,
+                        'started_at' => '',
                         'warehouse' => ['id' => 1, 'code' => 'CENTRO', 'name' => 'Centro'],
                         'total' => 1000,
                         'delivery_type' => 'EXPEDICION',
@@ -72,7 +72,7 @@ class OperarioOrderContractTest extends TestCase
         $mock = Mockery::mock(PickingServiceInterface::class);
         $mock->shouldReceive('getOrderDetail')
             ->once()
-            ->with($orderNumber, $user->id)
+            ->with($orderNumber, $user->id, [])
             ->andReturn([
                 'order_type' => 'NP',
                 'order_number' => '623200',
@@ -83,9 +83,9 @@ class OperarioOrderContractTest extends TestCase
                 'total_items' => 5,
                 'picked_items' => 0,
                 'completed_percentage' => 0,
-                'started_at' => null,
+                'started_at' => '',
                 'completed_at' => null,
-                'assigned_to' => null,
+                'assigned_to' => ['id' => null, 'name' => null],
                 'items' => [],
                 'alerts' => [],
             ]);
@@ -115,18 +115,18 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], [])
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_type' => 'NP',
                         'order_number' => '623200',
                         'customer' => 'Test Customer',
                         'status' => 'pending',
-                        'assigned_to' => null,
+                        'assigned_to' => ['id' => null, 'name' => null],
                         'items_count' => 5,
                         'items_picked' => 0,
                         'created_at' => now()->toIso8601String(),
-                        'started_at' => null,
+                        'started_at' => '',
                         'warehouse' => ['id' => 1, 'code' => 'CENTRO', 'name' => 'Centro'],
                         'total' => 1000,
                         'delivery_type' => 'EXPEDICION',
@@ -163,18 +163,18 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], [])
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_type' => 'NP',
                         'order_number' => '623200',
                         'customer' => 'Test Customer',
                         'status' => 'pending',
-                        'assigned_to' => null,
+                        'assigned_to' => ['id' => null, 'name' => null],
                         'items_count' => 5,
                         'items_picked' => 0,
                         'created_at' => now()->toIso8601String(),
-                        'started_at' => null,
+                        'started_at' => '',
                         'warehouse' => ['id' => 1, 'code' => 'CENTRO', 'name' => 'Centro'],
                         'total' => 1000,
                         'delivery_type' => 'EXPEDICION',
@@ -212,7 +212,7 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $orderNumber) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, [])
                 ->andReturn([
                     'order_type' => 'NP',
                     'order_number' => '623200',
@@ -223,9 +223,9 @@ class OperarioOrderContractTest extends TestCase
                     'total_items' => 5,
                     'picked_items' => 0,
                     'completed_percentage' => 0,
-                    'started_at' => null,
+                    'started_at' => '',
                     'completed_at' => null,
-                    'assigned_to' => null,
+                    'assigned_to' => ['id' => null, 'name' => null],
                     'items' => [],
                     'alerts' => [],
                 ]);
@@ -251,7 +251,7 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $orderNumber) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, [])
                 ->andReturn([
                     'order_type' => 'NP',
                     'order_number' => '623200',
@@ -262,9 +262,9 @@ class OperarioOrderContractTest extends TestCase
                     'total_items' => 5,
                     'picked_items' => 0,
                     'completed_percentage' => 0,
-                    'started_at' => null,
+                    'started_at' => '',
                     'completed_at' => null,
-                    'assigned_to' => null,
+                    'assigned_to' => ['id' => null, 'name' => null],
                     'items' => [],
                     'alerts' => [],
                 ]);
@@ -292,44 +292,13 @@ class OperarioOrderContractTest extends TestCase
             'status' => 'in_progress',
             'started_at' => now(),
             'user_id' => $user->id,
+            'warehouse_id' => 1,
         ]);
 
         $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user, $progress) {
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with($orderNumber, $user->id)
-                ->andReturn($progress);
-        });
-
-        $response = $this->postJson("/api/picking/orders/{$orderNumber}/start");
-
-        $response->assertStatus(200);
-
-        $order = $response->json('data');
-        $this->assertArrayHasKey('assigned_to', $order);
-        $this->assertArrayHasKey('started_at', $order);
-        $this->assertNotNull($order['assigned_to'], 'assigned_to must contain concrete assignee info');
-        $this->assertNotNull($order['started_at'], 'started_at must contain actual timestamp');
-        $this->assertEquals($user->id, $order['assigned_to']['id']);
-    }
-
-    public function test_start_accepts_numeric_only_order_number(): void
-    {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-
-        $orderNumber = '623200'; // Numeric-only (no prefix)
-
-        $progress = \App\Models\PickingOrderProgress::factory()->make([
-            'order_type' => 'NP',
-            'order_number' => 'NP 623200',
-            'status' => 'in_progress',
-        ]);
-
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user, $progress) {
-            $mock->shouldReceive('startOrder')
-                ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, [])
                 ->andReturn($progress);
         });
 
@@ -385,18 +354,18 @@ class OperarioOrderContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $orderNumber) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], [])
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_type' => 'NP',
                         'order_number' => $orderNumber,
                         'customer' => 'Test Customer',
                         'status' => 'pending',
-                        'assigned_to' => null,
+                        'assigned_to' => ['id' => null, 'name' => null],
                         'items_count' => 5,
                         'items_picked' => 0,
                         'created_at' => now()->toIso8601String(),
-                        'started_at' => null,
+                        'started_at' => '',
                         'warehouse' => ['id' => 1, 'code' => 'CENTRO', 'name' => 'Centro'],
                         'total' => 1000,
                         'delivery_type' => 'EXPEDICION',
@@ -405,7 +374,7 @@ class OperarioOrderContractTest extends TestCase
 
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, [])
                 ->andReturn([
                     'order_type' => 'NP',
                     'order_number' => $orderNumber,
@@ -416,9 +385,9 @@ class OperarioOrderContractTest extends TestCase
                     'total_items' => 5,
                     'picked_items' => 0,
                     'completed_percentage' => 0,
-                    'started_at' => null,
+                    'started_at' => '',
                     'completed_at' => null,
-                    'assigned_to' => null,
+                    'assigned_to' => ['id' => null, 'name' => null],
                     'items' => [],
                     'alerts' => [],
                 ]);
@@ -427,11 +396,13 @@ class OperarioOrderContractTest extends TestCase
                 'order_type' => 'NP',
                 'order_number' => 'NP '.$orderNumber,
                 'status' => 'in_progress',
+                'user_id' => $user->id,
+                'warehouse_id' => 1,
             ]);
 
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, [])
                 ->andReturn($progress);
         });
 

@@ -6,8 +6,12 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class PickingOrderCollection extends ResourceCollection
 {
-    public function toArray($request)
+    public $collects = PickingOrderResource::class;
+
+    public function toArray($request): array
     {
-        return $this->collection->map(fn ($item) => new PickingOrderResource($item))->toArray($request);
+        return [
+            'data' => $this->collection,
+        ];
     }
 }
