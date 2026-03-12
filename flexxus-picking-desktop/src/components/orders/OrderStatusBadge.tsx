@@ -1,41 +1,22 @@
-import { OrderStatus } from '@/types/api'
+import { STATUS_CONFIG, type OrderStatus } from '@/types/api'
 import { cn } from '@/lib/utils'
 
 interface OrderStatusBadgeProps {
-  status: OrderStatus
+  status: OrderStatus | string
   className?: string
 }
 
-const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
-  pending: {
-    label: 'Pendiente',
-    className: 'border-border/60 bg-surface-elevated text-muted-foreground',
-  },
-  in_progress: {
-    label: 'En Proceso',
-    className: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
-  },
-  completed: {
-    label: 'Completado',
-    className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
-  },
-  cancelled: {
-    label: 'Cancelado',
-    className: 'border-red-500/30 bg-red-500/10 text-red-400',
-  },
-  has_issues: {
-    label: 'Con Alertas',
-    className: 'border-red-500/30 bg-red-500/10 text-red-400',
-  },
-}
-
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
-  const config = statusConfig[status] ?? statusConfig.pending
+  // Use STATUS_CONFIG from types/api.ts for centralized config
+  const config = STATUS_CONFIG[status as OrderStatus] ?? STATUS_CONFIG.unknown
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium',
+        'transition-all duration-[var(--transition-fast)]',
+        'hover:scale-105 hover:shadow-sm',
+        config.pulseAnimation && 'animate-pulse-subtle',
         config.className,
         className
       )}
@@ -44,3 +25,4 @@ export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
     </span>
   )
 }
+

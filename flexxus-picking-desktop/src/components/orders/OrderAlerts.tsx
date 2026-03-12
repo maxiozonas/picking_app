@@ -10,6 +10,13 @@ interface OrderAlertsProps {
 }
 
 const alertConfig = {
+  critical: {
+    icon: AlertCircle,
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/30',
+    badge: 'border-red-500/40 bg-red-500/15 text-red-500',
+  },
   high: {
     icon: AlertCircle,
     color: 'text-red-400',

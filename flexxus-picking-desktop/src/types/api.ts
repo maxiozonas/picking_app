@@ -14,6 +14,7 @@ export interface Warehouse {
   code: string
   is_active?: boolean
   is_override?: boolean
+  color?: string // Optional warehouse-specific color override
 }
 
 // Matches AdminOrderResource / PendingOrderResource: { order_number, customer, status, warehouse, ... }
@@ -53,7 +54,7 @@ export interface PickingAlert {
   order_number?: string
   alert_type: AlertType
   message: string
-  severity: 'high' | 'medium' | 'low'
+  severity: 'high' | 'medium' | 'low' | 'critical'
   status: 'pending' | 'resolved'
   product_code?: string
   created_at: string
@@ -191,3 +192,97 @@ export interface EmployeeFormData {
   warehouse_id?: number | null
   is_active: boolean
 }
+
+// ===== Type Guards =====
+
+/**
+ * Type guard for OrderStatus validation
+ * @param status - The status string to validate
+ * @returns True if the status is a valid OrderStatus
+ */
+export function isValidOrderStatus(status: string): status is OrderStatus {
+  return ['pending', 'in_progress', 'completed', 'cancelled', 'has_issues'].includes(status)
+}
+
+/**
+ * Type guard for warehouse code validation
+ * @param code - The warehouse code to validate
+ * @returns True if the code is a known warehouse
+ */
+export function isValidWarehouse(code: string): boolean {
+  return ['001', '002', '004'].includes(code)
+}
+
+// ===== Status Configuration =====
+
+export interface StatusConfig {
+  label: string
+  variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'
+  className: string
+  pulseAnimation?: boolean
+}
+
+export const STATUS_CONFIG: Record<OrderStatus | 'unknown', StatusConfig> = {
+  pending: {
+    label: 'Pendiente',
+    variant: 'secondary',
+    className: 'bg-slate-800/50 text-slate-300 border border-slate-700 hover:bg-slate-800',
+  },
+  in_progress: {
+    label: 'En Proceso',
+    variant: 'default',
+    className: 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20',
+    pulseAnimation: true,
+  },
+  completed: {
+    label: 'Completado',
+    variant: 'success',
+    className: 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20',
+  },
+  cancelled: {
+    label: 'Cancelado',
+    variant: 'destructive',
+    className: 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20',
+  },
+  has_issues: {
+    label: 'Con Problemas',
+    variant: 'warning',
+    className: 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20',
+    pulseAnimation: true,
+  },
+  unknown: {
+    label: 'Desconocido',
+    variant: 'outline',
+    className: 'bg-gray-800/50 text-gray-400 border border-dashed border-gray-700',
+  },
+}
+
+// ===== Warehouse Colors =====
+
+export const WAREHOUSE_COLORS: Record<string, string> = {
+  '001': 'hsl(217 91% 60%)', // Don Bosco - blue
+  '002': 'hsl(142 76% 36%)', // Rondeau - green
+  '004': 'hsl(25 95% 53%)', // Socrates - orange
+}
+
+/**
+ * Get warehouse color with fallback
+ * @param warehouseCode - The warehouse code (e.g., '001', '002')
+ * @returns The color string for the warehouse, or default slate color
+ */
+export function getWarehouseColor(warehouseCode: string): string {
+  return WAREHOUSE_COLORS[warehouseCode] || 'hsl(215 20% 65%)' // Default slate-400
+}
+
+// ===== Null-Safe Helpers =====
+
+/**
+ * Null-safe count helper for stats display
+ * Prevents NaN in calculations with null/undefined values
+ * @param value - The count value (may be null or undefined)
+ * @returns The number value, defaulting to 0
+ */
+export function getSafeCount(value: number | null | undefined): number {
+  return value ?? 0
+}
+
