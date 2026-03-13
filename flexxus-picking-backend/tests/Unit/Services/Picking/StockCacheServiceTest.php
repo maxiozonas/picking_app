@@ -7,7 +7,7 @@ use App\Models\PickingOrderProgress;
 use App\Models\PickingStockValidation;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -47,17 +47,19 @@ class StockCacheServiceTest extends TestCase
             'item_code' => 'PROD-TEST', // Ensure item_code is set
         ]);
 
-        // Mock FlexxusPickingService
+        // Mock FlexxusProductServiceInterface
         $this->instance(
-            FlexxusPickingService::class,
-            $mockFlexxus = $this->createMock(FlexxusPickingService::class)
+            FlexxusProductServiceInterface::class,
+            $mockFlexxus = $this->createMock(FlexxusProductServiceInterface::class)
         );
 
-        $mockFlexxus->method('getProductStock')
+        $mockFlexxus->method('getProductStockBatch')
             ->willReturn([
-                'warehouse' => $this->warehouse->code,
-                'total' => 100,
-                'is_local' => true,
+                'PROD-TEST' => [
+                    'warehouse' => $this->warehouse->code,
+                    'total' => 100,
+                    'is_local' => true,
+                ],
             ]);
 
         // Re-create cache service with mocked dependency
@@ -81,24 +83,19 @@ class StockCacheServiceTest extends TestCase
             'item_code' => $itemCode,
         ]);
 
-        // Mock FlexxusPickingService
+        // Mock FlexxusProductServiceInterface
         $this->instance(
-            FlexxusPickingService::class,
-            $mockFlexxus = $this->createMock(FlexxusPickingService::class)
+            FlexxusProductServiceInterface::class,
+            $mockFlexxus = $this->createMock(FlexxusProductServiceInterface::class)
         );
 
-        $mockFlexxus->method('getProductStock')
-            ->with(
-                $itemCode,
-                $this->callback(function ($warehouse) {
-                    return $warehouse instanceof \App\Models\Warehouse
-                        && $warehouse->id === $this->warehouse->id;
-                })
-            )
+        $mockFlexxus->method('getProductStockBatch')
             ->willReturn([
-                'warehouse' => $this->warehouse->code,
-                'total' => 50,
-                'is_local' => true,
+                $itemCode => [
+                    'warehouse' => $this->warehouse->code,
+                    'total' => 50,
+                    'is_local' => true,
+                ],
             ]);
 
         $this->cacheService = new \App\Services\Picking\StockCacheService($mockFlexxus);

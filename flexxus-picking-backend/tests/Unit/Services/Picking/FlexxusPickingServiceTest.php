@@ -4,7 +4,8 @@ namespace Tests\Unit\Services\Picking;
 
 use App\Http\Clients\Flexxus\FlexxusClient;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusOrderService;
+use App\Services\Picking\FlexxusProductService;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -14,7 +15,9 @@ class FlexxusPickingServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusProductService $productService;
+
+    private FlexxusOrderService $orderService;
 
     private FlexxusClientFactoryInterface $mockFactory;
 
@@ -23,7 +26,8 @@ class FlexxusPickingServiceTest extends TestCase
         parent::setUp();
 
         $this->mockFactory = $this->createMock(FlexxusClientFactoryInterface::class);
-        $this->flexxusService = new FlexxusPickingService($this->mockFactory);
+        $this->productService = new FlexxusProductService($this->mockFactory);
+        $this->orderService = new FlexxusOrderService($this->mockFactory);
     }
 
     public function test_get_product_stock_cache_ttl_is_45_seconds(): void
@@ -35,13 +39,14 @@ class FlexxusPickingServiceTest extends TestCase
 
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->method('request')
-            ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount, $productCode) {
+            ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount) {
                 $callCount++;
+
                 // Code uses the optimized /v2/products/{code}?warehouse_list=... endpoint
                 return [
                     'data' => [[
                         'STOCKTOTALDEPOSITO' => 100,
-                        'STOCKREALDEPOSITO'  => 80,
+                        'STOCKREALDEPOSITO' => 80,
                         'STOCKPEDIDODEPOSITO' => 10,
                     ]],
                 ];
@@ -52,10 +57,10 @@ class FlexxusPickingServiceTest extends TestCase
             ->willReturn($mockWarehouseClient);
 
         // Act - First call hits the API
-        $result1 = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result1 = $this->productService->getProductStock($productCode, $warehouse);
 
         // Act - Second call uses cache (within 45s)
-        $result2 = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result2 = $this->productService->getProductStock($productCode, $warehouse);
 
         // Assert
         $this->assertNotNull($result1);
@@ -73,13 +78,14 @@ class FlexxusPickingServiceTest extends TestCase
 
         $mockWarehouseClient = $this->createMock(FlexxusClient::class);
         $mockWarehouseClient->method('request')
-            ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount, $productCode) {
+            ->willReturnCallback(function (string $method, string $endpoint) use (&$callCount) {
                 $callCount++;
+
                 // Code uses the optimized /v2/products/{code}?warehouse_list=... endpoint
                 return [
                     'data' => [[
                         'STOCKTOTALDEPOSITO' => 50,
-                        'STOCKREALDEPOSITO'  => 40,
+                        'STOCKREALDEPOSITO' => 40,
                         'STOCKPEDIDODEPOSITO' => 5,
                     ]],
                 ];
@@ -90,13 +96,13 @@ class FlexxusPickingServiceTest extends TestCase
             ->willReturn($mockWarehouseClient);
 
         // Act - First call
-        $result1 = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result1 = $this->productService->getProductStock($productCode, $warehouse);
 
         // Simulate time passing (46 seconds)
         $this->travel(46)->seconds();
 
         // Act - Second call should hit the API again (cache expired)
-        $result2 = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result2 = $this->productService->getProductStock($productCode, $warehouse);
 
         // Assert
         $this->assertNotNull($result1);
@@ -108,7 +114,8 @@ class FlexxusPickingServiceTest extends TestCase
     public function test_factory_is_injected_and_available(): void
     {
         // Assert
-        $this->assertInstanceOf(FlexxusPickingService::class, $this->flexxusService);
+        $this->assertInstanceOf(FlexxusProductService::class, $this->productService);
+        $this->assertInstanceOf(FlexxusOrderService::class, $this->orderService);
     }
 
     public function test_get_product_stock_uses_warehouse_specific_client(): void
@@ -128,10 +135,10 @@ class FlexxusPickingServiceTest extends TestCase
             ->with('GET', "/v2/products/{$productCode}")
             ->willReturn([
                 'data' => [[
-                    'STOCKTOTALDEPOSITO'  => 75,
-                    'STOCKREALDEPOSITO'   => 70,
+                    'STOCKTOTALDEPOSITO' => 75,
+                    'STOCKREALDEPOSITO' => 70,
                     'STOCKPEDIDODEPOSITO' => 0,
-                    'UBICACIONPRODUCTO'   => null,
+                    'UBICACIONPRODUCTO' => null,
                 ]],
             ]);
 
@@ -141,7 +148,7 @@ class FlexxusPickingServiceTest extends TestCase
             ->willReturn($mockWarehouseClient);
 
         // Act
-        $result = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result = $this->productService->getProductStock($productCode, $warehouse);
 
         // Assert
         $this->assertNotNull($result);
@@ -161,11 +168,11 @@ class FlexxusPickingServiceTest extends TestCase
                 if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}") {
                     return [
                         'data' => [[
-                            'ID_ARTICULO'        => 16292,
-                            'STOCKTOTALDEPOSITO'  => 33,
-                            'STOCKREALDEPOSITO'   => 30,
+                            'ID_ARTICULO' => 16292,
+                            'STOCKTOTALDEPOSITO' => 33,
+                            'STOCKREALDEPOSITO' => 30,
                             'STOCKPEDIDODEPOSITO' => 0,
-                            'UBICACIONPRODUCTO'   => 'A-01-02',
+                            'UBICACIONPRODUCTO' => 'A-01-02',
                         ]],
                     ];
                 }
@@ -177,7 +184,7 @@ class FlexxusPickingServiceTest extends TestCase
             ->with($warehouse)
             ->willReturn($mockWarehouseClient);
 
-        $result = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result = $this->productService->getProductStock($productCode, $warehouse);
 
         $this->assertNotNull($result);
         $this->assertSame(33, $result['total']);
@@ -197,11 +204,11 @@ class FlexxusPickingServiceTest extends TestCase
                 if ($method === 'GET' && $endpoint === "/v2/products/{$productCode}") {
                     return [
                         'data' => [[
-                            'ID_ARTICULO'        => 70001,
-                            'STOCKTOTALDEPOSITO'  => 9,
-                            'STOCKREALDEPOSITO'   => 9,
+                            'ID_ARTICULO' => 70001,
+                            'STOCKTOTALDEPOSITO' => 9,
+                            'STOCKREALDEPOSITO' => 9,
                             'STOCKPEDIDODEPOSITO' => 0,
-                            'UBICACIONPRODUCTO'   => null,
+                            'UBICACIONPRODUCTO' => null,
                         ]],
                     ];
                 }
@@ -213,7 +220,7 @@ class FlexxusPickingServiceTest extends TestCase
             ->with($warehouse)
             ->willReturn($mockWarehouseClient);
 
-        $result = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $result = $this->productService->getProductStock($productCode, $warehouse);
 
         $this->assertNotNull($result);
         $this->assertSame(9, $result['total']);
@@ -241,7 +248,7 @@ class FlexxusPickingServiceTest extends TestCase
             ->with($warehouse)
             ->willReturn($mockWarehouseClient);
 
-        $result = $this->flexxusService->getOrderDetail($orderNumber, $warehouse);
+        $result = $this->orderService->getOrderDetail($orderNumber, $warehouse);
 
         $this->assertSame('12345', $result['NUMEROCOMPROBANTE']);
     }
@@ -300,7 +307,7 @@ class FlexxusPickingServiceTest extends TestCase
             ->with($warehouse)
             ->willReturn($mockWarehouseClient);
 
-        $result = $this->flexxusService->getOrdersByDateAndWarehouse('2026-03-06', $warehouse);
+        $result = $this->orderService->getOrdersByDateAndWarehouse('2026-03-06', $warehouse);
 
         $this->assertCount(1, $result);
         $this->assertSame($orderNumber, $result[0]['NUMEROCOMPROBANTE']);
@@ -346,8 +353,8 @@ class FlexxusPickingServiceTest extends TestCase
                 return $mockWarehouseClientB;
             });
 
-        $resultA = $this->flexxusService->getOrderDetail($orderNumber, $warehouseA);
-        $resultB = $this->flexxusService->getOrderDetail($orderNumber, $warehouseB);
+        $resultA = $this->orderService->getOrderDetail($orderNumber, $warehouseA);
+        $resultB = $this->orderService->getOrderDetail($orderNumber, $warehouseB);
 
         $this->assertSame('RONDEAU', $resultA['DEPOSITO']);
         $this->assertSame('CENTRO', $resultB['DEPOSITO']);

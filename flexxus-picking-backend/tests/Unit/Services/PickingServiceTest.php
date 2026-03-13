@@ -1,4 +1,4 @@
-<?php
+php
 
 namespace Tests\Unit\Services;
 
@@ -14,7 +14,9 @@ use App\Models\PickingItemProgress;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusDataFormatter;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\PickingService;
 use App\Services\Picking\StockValidationService;
@@ -30,7 +32,11 @@ class PickingServiceTest extends TestCase
 
     private PickingService $service;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusOrderServiceInterface $orderService;
+
+    private FlexxusProductServiceInterface $productService;
+
+    private FlexxusDataFormatter $formatter;
 
     private StockValidationServiceInterface $stockValidationService;
 
@@ -48,12 +54,16 @@ class PickingServiceTest extends TestCase
         Http::fake();
         Cache::flush();
 
-        $this->flexxusService = Mockery::mock(FlexxusPickingService::class);
+        $this->orderService = Mockery::mock(FlexxusOrderServiceInterface::class);
+        $this->productService = Mockery::mock(FlexxusProductServiceInterface::class);
+        $this->formatter = Mockery::mock(FlexxusDataFormatter::class);
         $this->stockValidationService = Mockery::mock(StockValidationServiceInterface::class);
         $this->stockCacheService = Mockery::mock(\App\Services\Picking\Interfaces\StockCacheServiceInterface::class);
         $this->warehouseContextResolver = Mockery::mock(\App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface::class);
         $this->service = new PickingService(
-            $this->flexxusService,
+            $this->orderService,
+            $this->productService,
+            $this->formatter,
             $this->stockValidationService,
             $this->stockCacheService,
             $this->warehouseContextResolver
@@ -93,7 +103,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -141,7 +151,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -170,7 +180,7 @@ class PickingServiceTest extends TestCase
             ['NUMEROCOMPROBANTE' => '3', 'RAZONSOCIAL' => 'Customer 3', 'TOTAL' => 300, 'FECHACOMPROBANTE' => $today],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -217,7 +227,7 @@ class PickingServiceTest extends TestCase
             ['NUMEROCOMPROBANTE' => '3', 'RAZONSOCIAL' => 'Customer 3', 'TOTAL' => 300, 'FECHACOMPROBANTE' => $today],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -259,7 +269,7 @@ class PickingServiceTest extends TestCase
             ['NUMEROCOMPROBANTE' => '2', 'RAZONSOCIAL' => 'Customer 2', 'TOTAL' => 200, 'FECHACOMPROBANTE' => $today],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -295,7 +305,7 @@ class PickingServiceTest extends TestCase
             ['NUMEROCOMPROBANTE' => '2', 'RAZONSOCIAL' => 'Customer 2', 'TOTAL' => 200, 'FECHACOMPROBANTE' => $today],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -382,7 +392,7 @@ class PickingServiceTest extends TestCase
             ->with($this->user->id)
             ->andReturn($context);
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with('12345', 'WH01')
             ->once()
             ->andReturn($flexxusOrder);
@@ -392,7 +402,7 @@ class PickingServiceTest extends TestCase
             ->once()
             ->andReturn($stockInfo);
 
-        $this->flexxusService->shouldReceive('formatOrderItem')
+        $this->formatter->shouldReceive('formatOrderItem')
             ->once()
             ->andReturn($formattedItem);
 
@@ -419,7 +429,7 @@ class PickingServiceTest extends TestCase
             'items' => [],
         ];
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with($orderNumber, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -454,7 +464,7 @@ class PickingServiceTest extends TestCase
     {
         $orderNumber = 'NP 99999';
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with($orderNumber, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -479,7 +489,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -493,7 +503,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with($orderNumber, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -527,7 +537,7 @@ class PickingServiceTest extends TestCase
     {
         $orderNumber = 'NP 99999';
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->once()
             ->andReturn([]);
 
@@ -546,7 +556,7 @@ class PickingServiceTest extends TestCase
             ['NUMEROCOMPROBANTE' => '54321', 'DEPOSITO' => $this->warehouse->name],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with(Mockery::type('string'), Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -561,7 +571,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with($orderNumber, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -580,7 +590,9 @@ class PickingServiceTest extends TestCase
 
         // Create service with mocked cache service
         $this->service = new PickingService(
-            $this->flexxusService,
+            $this->orderService,
+            $this->productService,
+            $this->formatter,
             $this->stockValidationService,
             $mockCacheService,
             $this->warehouseContextResolver
@@ -607,7 +619,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -620,7 +632,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
+        $this->orderService->shouldReceive('getOrderDetail')
             ->with($canonicalOrderNumber, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -971,7 +983,7 @@ class PickingServiceTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->with($today, Mockery::on(function ($warehouse) {
                 return $warehouse instanceof \App\Models\Warehouse;
             }))
@@ -1006,7 +1018,7 @@ class PickingServiceTest extends TestCase
         $this->assertEquals($this->user->name, $firstOrder['assigned_to']['name']);
         $this->assertEquals(3, $firstOrder['items_picked']);
 
-        $this->assertNull($secondOrder['assigned_to']);
+        $this->assertNull($secondOrder['assigned_to']['id']);
         $this->assertEquals(0, $secondOrder['items_picked']);
     }
 

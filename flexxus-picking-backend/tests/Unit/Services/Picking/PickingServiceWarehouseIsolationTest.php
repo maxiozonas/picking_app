@@ -6,7 +6,9 @@ use App\Exceptions\Picking\OrderNotFoundException;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusDataFormatter;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
@@ -33,8 +35,8 @@ class PickingServiceWarehouseIsolationTest extends TestCase
             'status' => 'completed',
         ]);
 
-        $flexxusService = Mockery::mock(FlexxusPickingService::class);
-        $flexxusService->shouldReceive('getOrderDetail')
+        $orderService = Mockery::mock(FlexxusOrderServiceInterface::class);
+        $orderService->shouldReceive('getOrderDetail')
             ->once()
             ->with($orderNumber, Mockery::on(fn (Warehouse $warehouse) => $warehouse->id === $warehouseA->id))
             ->andReturn([
@@ -44,7 +46,9 @@ class PickingServiceWarehouseIsolationTest extends TestCase
             ]);
 
         $service = new PickingService(
-            $flexxusService,
+            $orderService,
+            Mockery::mock(FlexxusProductServiceInterface::class),
+            $this->app->make(FlexxusDataFormatter::class),
             Mockery::mock(StockValidationServiceInterface::class),
             Mockery::mock(StockCacheServiceInterface::class),
             $this->app->make(WarehouseExecutionContextResolverInterface::class)
@@ -53,7 +57,7 @@ class PickingServiceWarehouseIsolationTest extends TestCase
         $detail = $service->getOrderDetail($orderNumber, $user->id);
 
         $this->assertSame('pending', $detail['status']);
-        $this->assertNull($detail['assigned_to']);
+        $this->assertNull($detail['assigned_to']['id']);
     }
 
     public function test_pick_item_does_not_access_order_from_different_warehouse(): void
@@ -77,7 +81,9 @@ class PickingServiceWarehouseIsolationTest extends TestCase
             ->andThrow(new OrderNotFoundException($orderNumber));
 
         $service = new PickingService(
-            Mockery::mock(FlexxusPickingService::class),
+            Mockery::mock(FlexxusOrderServiceInterface::class),
+            Mockery::mock(FlexxusProductServiceInterface::class),
+            $this->app->make(FlexxusDataFormatter::class),
             $stockValidationMock,
             Mockery::mock(StockCacheServiceInterface::class),
             $this->app->make(WarehouseExecutionContextResolverInterface::class)

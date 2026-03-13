@@ -11,7 +11,12 @@ use App\Models\PickingItemProgress;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusDataFormatter;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
+use App\Services\Picking\Interfaces\StockCacheServiceInterface;
+use App\Services\Picking\Interfaces\StockValidationServiceInterface;
+use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\PickingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -23,7 +28,13 @@ class PickingServiceExceptionsTest extends TestCase
 
     private PickingService $service;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusOrderServiceInterface $orderService;
+
+    private FlexxusProductServiceInterface $productService;
+
+    private StockValidationServiceInterface $stockValidationService;
+
+    private StockCacheServiceInterface $stockCacheService;
 
     private User $user;
 
@@ -33,8 +44,18 @@ class PickingServiceExceptionsTest extends TestCase
     {
         parent::setUp();
 
-        $this->flexxusService = Mockery::mock(FlexxusPickingService::class);
-        $this->service = new PickingService($this->flexxusService);
+        $this->orderService = Mockery::mock(FlexxusOrderServiceInterface::class);
+        $this->productService = Mockery::mock(FlexxusProductServiceInterface::class);
+        $this->stockValidationService = Mockery::mock(StockValidationServiceInterface::class);
+        $this->stockCacheService = Mockery::mock(StockCacheServiceInterface::class);
+        $this->service = new PickingService(
+            $this->orderService,
+            $this->productService,
+            $this->app->make(FlexxusDataFormatter::class),
+            $this->stockValidationService,
+            $this->stockCacheService,
+            $this->app->make(WarehouseExecutionContextResolverInterface::class)
+        );
 
         $this->warehouse = Warehouse::factory()->create(['code' => 'WH01', 'name' => 'WH01']);
         $this->user = User::factory()->create(['warehouse_id' => $this->warehouse->id]);
@@ -45,8 +66,8 @@ class PickingServiceExceptionsTest extends TestCase
     {
         $orderNumber = 'NP 99999';
 
-        $this->flexxusService->shouldReceive('getOrderDetail')
-            ->with($orderNumber)
+        $this->orderService->shouldReceive('getOrderDetail')
+            ->with($orderNumber, Mockery::type(Warehouse::class))
             ->once()
             ->andReturn([]);
 
@@ -61,8 +82,8 @@ class PickingServiceExceptionsTest extends TestCase
         $orderNumber = 'NP 99999';
         $today = now()->format('Y-m-d');
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
+            ->with($today, Mockery::type(Warehouse::class))
             ->once()
             ->andReturn([]);
 
@@ -223,8 +244,8 @@ class PickingServiceExceptionsTest extends TestCase
             ],
         ];
 
-        $this->flexxusService->shouldReceive('getOrdersByDateAndWarehouse')
-            ->with($today, 'WH01')
+        $this->orderService->shouldReceive('getOrdersByDateAndWarehouse')
+            ->with($today, Mockery::type(Warehouse::class))
             ->once()
             ->andReturn($flexxusOrders);
 

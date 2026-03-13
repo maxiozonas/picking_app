@@ -4,7 +4,9 @@ namespace Tests\Unit\Services;
 
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusDataFormatter;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
@@ -20,7 +22,11 @@ class PickingServiceMobileContractTest extends TestCase
 
     private PickingService $service;
 
-    private $flexxusService;
+    private $orderService;
+
+    private $productService;
+
+    private $formatter;
 
     private $warehouseContextResolver;
 
@@ -32,13 +38,17 @@ class PickingServiceMobileContractTest extends TestCase
     {
         parent::setUp();
 
-        $this->flexxusService = Mockery::mock(FlexxusPickingService::class);
+        $this->orderService = Mockery::mock(FlexxusOrderServiceInterface::class);
+        $this->productService = Mockery::mock(FlexxusProductServiceInterface::class);
+        $this->formatter = Mockery::mock(FlexxusDataFormatter::class);
         $stockValidationService = Mockery::mock(StockValidationServiceInterface::class);
         $stockCacheService = Mockery::mock(StockCacheServiceInterface::class);
         $this->warehouseContextResolver = Mockery::mock(WarehouseExecutionContextResolverInterface::class);
 
         $this->service = new PickingService(
-            $this->flexxusService,
+            $this->orderService,
+            $this->productService,
+            $this->formatter,
             $stockValidationService,
             $stockCacheService,
             $this->warehouseContextResolver,
@@ -69,7 +79,7 @@ class PickingServiceMobileContractTest extends TestCase
     {
         $today = now()->format('Y-m-d');
 
-        $this->flexxusService
+        $this->orderService
             ->shouldReceive('getOrdersByDateAndWarehouse')
             ->twice()
             ->with($today, Mockery::type(Warehouse::class))
@@ -111,7 +121,7 @@ class PickingServiceMobileContractTest extends TestCase
             ];
         }
 
-        $this->flexxusService
+        $this->orderService
             ->shouldReceive('getOrdersByDateAndWarehouse')
             ->twice()
             ->with($today, Mockery::type(Warehouse::class))
