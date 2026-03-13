@@ -27,7 +27,7 @@ class AdminPickingService implements AdminPickingServiceInterface
         foreach ($warehouses as $warehouse) {
             $cacheKey = $this->buildCacheKey($date, $warehouse);
 
-            $flexxusOrders = Cache::remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($date, $warehouse) {
+            $flexxusOrders = Cache::remember($cacheKey, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)), function () use ($date, $warehouse) {
                 return $this->fetchFlexxusOrders($date, $warehouse);
             });
 
@@ -50,7 +50,7 @@ class AdminPickingService implements AdminPickingServiceInterface
             Cache::forget($cacheKey);
 
             $flexxusOrders = $this->fetchFlexxusOrders($date, $warehouse);
-            Cache::put($cacheKey, $flexxusOrders, now()->addSeconds(self::CACHE_TTL_SECONDS));
+            Cache::put($cacheKey, $flexxusOrders, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)));
 
             $allOrders = $allOrders->merge(
                 $this->buildOrdersForWarehouse(collect($flexxusOrders), $warehouse)
@@ -120,6 +120,7 @@ class AdminPickingService implements AdminPickingServiceInterface
             // Flexxus may return all orders regardless of the warehouse param.
             return array_values(array_filter($allOrders, function ($order) use ($warehouse) {
                 $deposito = trim((string) ($order['DEPOSITO'] ?? ''));
+
                 // Match against warehouse name (case-insensitive) or code
                 return strcasecmp($deposito, trim($warehouse->name)) === 0
                     || strcasecmp($deposito, trim($warehouse->code)) === 0;
@@ -195,6 +196,8 @@ class AdminPickingService implements AdminPickingServiceInterface
                     'warehouse' => $warehouse->code,
                     'error' => $e->getMessage(),
                 ]);
+
+                continue;
             }
         }
 
@@ -309,7 +312,7 @@ class AdminPickingService implements AdminPickingServiceInterface
         foreach ($warehouses as $warehouse) {
             $cacheKey = $this->buildCacheKey($date, $warehouse);
 
-            $flexxusOrders = Cache::remember($cacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($date, $warehouse) {
+            $flexxusOrders = Cache::remember($cacheKey, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)), function () use ($date, $warehouse) {
                 return $this->fetchFlexxusOrders($date, $warehouse);
             });
 
@@ -323,7 +326,7 @@ class AdminPickingService implements AdminPickingServiceInterface
                     $client = $this->clientFactory->createForWarehouse($warehouse);
                     $detailCacheKey = "flexxus_order_detail_pending_{$orderNumber}_".$this->warehouseScope($warehouse);
 
-                    $detail = Cache::remember($detailCacheKey, now()->addSeconds(self::CACHE_TTL_SECONDS), function () use ($client, $orderNumber) {
+                    $detail = Cache::remember($detailCacheKey, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)), function () use ($client, $orderNumber) {
                         $response = $client->request('GET', "/v2/orders/NP/{$orderNumber}");
 
                         return $response['data'] ?? null;

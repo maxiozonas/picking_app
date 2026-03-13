@@ -5,6 +5,7 @@ namespace App\Services\Picking;
 use App\Models\PickingItemProgress;
 use App\Models\PickingOrderProgress;
 use App\Models\PickingStockValidation;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -18,31 +19,35 @@ class StockCacheService implements StockCacheServiceInterface
 {
     private const CACHE_TTL_SECONDS = 45;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusProductServiceInterface $productService;
 
-    public function __construct(FlexxusPickingService $flexxusService)
+    public function __construct(FlexxusProductServiceInterface $productService)
     {
-        $this->flexxusService = $flexxusService;
+        $this->productService = $productService;
     }
 
     /**
      * {@inheritdoc}
+     *
+     * Uses batch stock fetch via Http::pool() for parallel Flexxus calls.
      */
     public function prefetchStockForOrder(PickingOrderProgress $order): EloquentCollection
     {
         $validations = new EloquentCollection;
 
-        // Get all items for the order
-        $items = PickingItemProgress::where('picking_order_progress_id', $order->id)
-            ->get();
+        $items = PickingItemProgress::where('picking_order_progress_id', $order->id)->get();
+
+        if ($items->isEmpty()) {
+            return $validations;
+        }
+
+        $productCodes = $items->pluck('item_code')->unique()->values()->all();
+
+        // Batch fetch all stock in parallel
+        $batchStock = $this->productService->getProductStockBatch($productCodes, $order->warehouse);
 
         foreach ($items as $item) {
-            // Fetch stock from Flexxus
-            $stockInfo = $this->flexxusService->getProductStock(
-                $item->item_code,
-                $order->warehouse
-            );
-
+            $stockInfo = $batchStock[$item->item_code] ?? null;
             $availableQty = $stockInfo['total'] ?? 0;
 
             // Create validation record as cache entry
@@ -88,7 +93,7 @@ class StockCacheService implements StockCacheServiceInterface
         }
 
         // Check if expired
-        if ($validation->validated_at->lt(now()->subSeconds(self::CACHE_TTL_SECONDS))) {
+        if ($validation->validated_at->lt(now()->subSeconds(config('picking.stock_cache_ttl', self::CACHE_TTL_SECONDS)))) {
             return null;
         }
 

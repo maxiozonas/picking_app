@@ -78,6 +78,26 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Picking\Interfaces\AdminPickingServiceInterface::class,
             \App\Services\Picking\AdminPickingService::class
         );
+
+        $this->app->bind(
+            \App\Services\Admin\Interfaces\AdminDashboardServiceInterface::class,
+            \App\Services\Admin\AdminDashboardService::class
+        );
+
+        $this->app->bind(
+            \App\Services\Admin\Interfaces\AdminInventoryServiceInterface::class,
+            \App\Services\Admin\AdminInventoryService::class
+        );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\FlexxusOrderServiceInterface::class,
+            \App\Services\Picking\FlexxusOrderService::class
+        );
+
+        $this->app->bind(
+            \App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class,
+            \App\Services\Picking\FlexxusProductService::class
+        );
     }
 
     /**

@@ -11,6 +11,8 @@ use App\Models\PickingOrderEvent;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
@@ -19,7 +21,11 @@ use Illuminate\Support\Facades\DB;
 
 class PickingService implements PickingServiceInterface
 {
-    private FlexxusPickingService $flexxusService;
+    private FlexxusOrderServiceInterface $orderService;
+
+    private FlexxusProductServiceInterface $productService;
+
+    private FlexxusDataFormatter $formatter;
 
     private StockValidationServiceInterface $stockValidationService;
 
@@ -28,12 +34,16 @@ class PickingService implements PickingServiceInterface
     private WarehouseExecutionContextResolverInterface $warehouseContextResolver;
 
     public function __construct(
-        FlexxusPickingService $flexxusService,
+        FlexxusOrderServiceInterface $orderService,
+        FlexxusProductServiceInterface $productService,
+        FlexxusDataFormatter $formatter,
         StockValidationServiceInterface $stockValidationService,
         StockCacheServiceInterface $stockCacheService,
         WarehouseExecutionContextResolverInterface $warehouseContextResolver
     ) {
-        $this->flexxusService = $flexxusService;
+        $this->orderService = $orderService;
+        $this->productService = $productService;
+        $this->formatter = $formatter;
         $this->stockValidationService = $stockValidationService;
         $this->stockCacheService = $stockCacheService;
         $this->warehouseContextResolver = $warehouseContextResolver;
@@ -56,7 +66,7 @@ class PickingService implements PickingServiceInterface
 
         $today = now()->format('Y-m-d');
 
-        $flexxusOrders = $this->flexxusService->getOrdersByDateAndWarehouse(
+        $flexxusOrders = $this->orderService->getOrdersByDateAndWarehouse(
             $today,
             $warehouse
         );
@@ -147,7 +157,7 @@ class PickingService implements PickingServiceInterface
         $parsed = OrderNumberParser::parse($orderNumber);
         $canonicalOrderNumber = $parsed['canonical_key'];
 
-        $flexxusOrder = $this->flexxusService->getOrderDetail($canonicalOrderNumber, $warehouse);
+        $flexxusOrder = $this->orderService->getOrderDetail($canonicalOrderNumber, $warehouse);
 
         if (! $flexxusOrder) {
             throw new OrderNotFoundException($orderNumber, ['source' => 'Flexxus']);
@@ -163,10 +173,10 @@ class PickingService implements PickingServiceInterface
 
         foreach ($flexxusItems as $item) {
             $productCode = $item['CODIGOPARTICULAR'] ?? '';
-            $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse);
+            $stockInfo = $this->productService->getProductStock($productCode, $warehouse);
             $itemProgress = $itemsProgress->get($productCode);
 
-            $formattedItem = $this->flexxusService->formatOrderItem($item, $stockInfo);
+            $formattedItem = $this->formatter->formatOrderItem($item, $stockInfo);
 
             if ($itemProgress) {
                 $formattedItem['quantity_picked'] = $itemProgress->quantity_picked;
@@ -242,7 +252,7 @@ class PickingService implements PickingServiceInterface
         $parsed = OrderNumberParser::parse($orderNumber);
         $canonicalOrderNumber = $parsed['canonical_key'];
 
-        $flexxusOrders = $this->flexxusService->getOrdersByDateAndWarehouse(
+        $flexxusOrders = $this->orderService->getOrdersByDateAndWarehouse(
             now()->format('Y-m-d'),
             $warehouse
         );
@@ -271,7 +281,7 @@ class PickingService implements PickingServiceInterface
             'started_at' => now(),
         ]);
 
-        $flexxusOrder = $this->flexxusService->getOrderDetail($canonicalOrderNumber, $warehouse);
+        $flexxusOrder = $this->orderService->getOrderDetail($canonicalOrderNumber, $warehouse);
         $flexxusItems = $flexxusOrder['DETALLE'] ?? [];
 
         // Persist customer name from Flexxus so admin can see it even without querying Flexxus
@@ -584,16 +594,16 @@ class PickingService implements PickingServiceInterface
             return null;
         }
 
-        $stockInfo = $this->flexxusService->getProductStock($productCode, $warehouse);
+        $stockInfo = $this->productService->getProductStock($productCode, $warehouse);
 
         return [
-            'item_code'          => $productCode,
+            'item_code' => $productCode,
             'available_quantity' => $stockInfo['available_quantity'] ?? 0,
-            'location'           => $stockInfo['location'] ?? null,
-            'last_updated'       => now()->toIso8601String(),
-            'warehouse_id'       => $warehouse->id,
-            'warehouse_code'     => $warehouse->code,
-            'warehouse_name'     => $warehouse->name,
+            'location' => $stockInfo['location'] ?? null,
+            'last_updated' => now()->toIso8601String(),
+            'warehouse_id' => $warehouse->id,
+            'warehouse_code' => $warehouse->code,
+            'warehouse_name' => $warehouse->name,
         ];
     }
 }

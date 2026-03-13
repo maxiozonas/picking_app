@@ -10,6 +10,7 @@ use App\Models\PickingOrderProgress;
 use App\Models\PickingStockValidation;
 use App\Models\User;
 use App\Services\Picking\Interfaces\AlertServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -24,15 +25,15 @@ class StockValidationService implements StockValidationServiceInterface
 {
     private const DEFAULT_VALIDATION_TTL_SECONDS = 60;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusProductServiceInterface $productService;
 
     private AlertServiceInterface $alertService;
 
     public function __construct(
-        FlexxusPickingService $flexxusService,
+        FlexxusProductServiceInterface $productService,
         AlertServiceInterface $alertService
     ) {
-        $this->flexxusService = $flexxusService;
+        $this->productService = $productService;
         $this->alertService = $alertService;
     }
 
@@ -42,7 +43,8 @@ class StockValidationService implements StockValidationServiceInterface
     public function validateStockForPick(string $orderNumber, string $itemCode, int $requestedQty, User $user): PickingStockValidation
     {
         // Step 1: Load order and item progress
-        $order = PickingOrderProgress::where('order_number', $orderNumber)
+        $order = PickingOrderProgress::with('warehouse')
+            ->where('order_number', $orderNumber)
             ->where('user_id', $user->id)
             ->firstOrFail();
 
@@ -180,24 +182,6 @@ class StockValidationService implements StockValidationServiceInterface
         ]);
 
         return $validation;
-
-        return PickingStockValidation::create([
-            'order_number' => $orderNumber,
-            'item_code' => $itemCode,
-            'validation_type' => 'physical_stock',
-            'requested_qty' => $requestedQty,
-            'available_qty' => $flexxusStock,
-            'validation_result' => 'passed',
-            'error_code' => null,
-            'stock_snapshot' => [
-                'local_picked' => $item->quantity_picked,
-                'local_requested' => $item->quantity_requested,
-                'flexxus_available' => $flexxusStock,
-            ],
-            'validated_at' => now(),
-            'user_id' => $user->id,
-            'warehouse_id' => $order->warehouse_id,
-        ]);
     }
 
     /**
@@ -205,8 +189,18 @@ class StockValidationService implements StockValidationServiceInterface
      */
     public function prefetchStockForOrder(PickingOrderProgress $order): Collection
     {
-        // TODO: Implement pre-fetch in Phase 3 (Performance)
-        return collect();
+        $items = PickingItemProgress::where('picking_order_progress_id', $order->id)->get();
+
+        if ($items->isEmpty()) {
+            return collect();
+        }
+
+        $productCodes = $items->pluck('product_code')->unique()->values()->all();
+
+        // Batch fetch stock in parallel
+        $this->productService->getProductStockBatch($productCodes, $order->warehouse);
+
+        return $items;
     }
 
     /**
@@ -239,7 +233,7 @@ class StockValidationService implements StockValidationServiceInterface
      */
     private function getFlexxusStock(string $itemCode, \App\Models\Warehouse $warehouse): int
     {
-        $stockInfo = $this->flexxusService->getProductStock($itemCode, $warehouse);
+        $stockInfo = $this->productService->getProductStock($itemCode, $warehouse);
 
         if ($stockInfo === null) {
             // If no stock info found, assume 0 available
