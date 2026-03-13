@@ -112,4 +112,17 @@ class PickingOrderProgress extends Model
 
         return $query;
     }
+
+    public function getCompletedPercentageAttribute(): float
+    {
+        $totalItems = $this->items->count();
+
+        if ($totalItems === 0) {
+            return 0.0;
+        }
+
+        $pickedItems = $this->items->where('status', 'completed')->count();
+
+        return round(($pickedItems / $totalItems) * 100, 1);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Models\User;
 use App\Models\Warehouse;
 
 interface WarehouseServiceInterface
@@ -24,4 +25,25 @@ interface WarehouseServiceInterface
      * Clear Flexxus credentials for a warehouse
      */
     public function clearFlexxusCredentials(Warehouse $warehouse): void;
+
+    /**
+     * Assign a warehouse to an employee user.
+     *
+     * @throws \App\Exceptions\Admin\WarehouseAssignmentException
+     */
+    public function assignToUser(User $user, Warehouse $warehouse): void;
+
+    /**
+     * Remove a warehouse from an employee user.
+     *
+     * @throws \App\Exceptions\Admin\WarehouseAssignmentException
+     */
+    public function removeFromUser(User $user, Warehouse $warehouse): void;
+
+    /**
+     * Get the warehouse assigned to a user.
+     *
+     * @throws \App\Exceptions\Admin\WarehouseAssignmentException
+     */
+    public function getUserWarehouse(User $user): ?Warehouse;
 }

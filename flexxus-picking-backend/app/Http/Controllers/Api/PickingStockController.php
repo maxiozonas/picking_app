@@ -35,7 +35,7 @@ class PickingStockController extends Controller
         if (! $stock) {
             throw new OrderNotFoundException($productCode, [
                 'order_number' => $orderNumber,
-                'type'         => 'item',
+                'type' => 'item',
             ]);
         }
 

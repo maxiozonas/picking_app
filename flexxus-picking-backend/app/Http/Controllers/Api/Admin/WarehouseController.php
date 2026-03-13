@@ -29,30 +29,11 @@ class WarehouseController extends Controller
         $user = User::findOrFail($userId);
         $warehouse = Warehouse::findOrFail($warehouseId);
 
-        if ($user->role !== 'empleado') {
-            return response()->json([
-                'error' => [
-                    'message' => 'Only employees can have warehouses assigned',
-                    'error_code' => 'INVALID_OPERATION',
-                ],
-            ], 422);
-        }
-
-        $user->warehouse_id = $warehouse->id;
-        $user->override_expires_at = null;
-        $user->save();
+        $this->warehouseService->assignToUser($user, $warehouse);
 
         return response()->json([
             'message' => 'Warehouse assigned successfully',
-            'data' => [
-                'user_id' => $user->id,
-                'warehouse_id' => $warehouse->id,
-                'warehouse' => [
-                    'id' => $warehouse->id,
-                    'code' => $warehouse->code,
-                    'name' => $warehouse->name,
-                ],
-            ],
+            'data' => new WarehouseResource($warehouse),
         ]);
     }
 
@@ -61,23 +42,7 @@ class WarehouseController extends Controller
         $user = User::findOrFail($userId);
         $warehouse = Warehouse::findOrFail($warehouseId);
 
-        if ($user->role !== 'empleado') {
-            return response()->json([
-                'error' => [
-                    'message' => 'Only employees can have warehouses modified',
-                    'error_code' => 'INVALID_OPERATION',
-                ],
-            ], 422);
-        }
-
-        if ($user->warehouse_id === $warehouse->id) {
-            return response()->json([
-                'error' => [
-                    'message' => 'Cannot remove primary warehouse. Assign a new warehouse first.',
-                    'error_code' => 'INVALID_OPERATION',
-                ],
-            ], 422);
-        }
+        $this->warehouseService->removeFromUser($user, $warehouse);
 
         return response()->json([
             'message' => 'Warehouse removed successfully',
@@ -88,31 +53,10 @@ class WarehouseController extends Controller
     {
         $user = User::findOrFail($userId);
 
-        if ($user->role !== 'empleado') {
-            return response()->json([
-                'message' => 'Only employees have warehouses',
-            ], 422);
-        }
-
-        if (! $user->warehouse) {
-            return response()->json([
-                'data' => [
-                    'warehouse' => null,
-                ],
-            ]);
-        }
+        $warehouse = $this->warehouseService->getUserWarehouse($user);
 
         return response()->json([
-            'data' => [
-                'warehouse' => [
-                    'id' => $user->warehouse->id,
-                    'code' => $user->warehouse->code,
-                    'name' => $user->warehouse->name,
-                    'client' => $user->warehouse->client,
-                    'branch' => $user->warehouse->branch,
-                    'is_active' => $user->warehouse->is_active,
-                ],
-            ],
+            'data' => $warehouse ? new WarehouseResource($warehouse) : null,
         ]);
     }
 
