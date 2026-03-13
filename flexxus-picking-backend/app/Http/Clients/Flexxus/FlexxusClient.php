@@ -68,6 +68,26 @@ class FlexxusClient implements FlexxusClientInterface
         return $suffix ? "flexxus_token_{$suffix}" : 'flexxus_token';
     }
 
+    public function getBaseUrl(): string
+    {
+        return $this->baseUrl;
+    }
+
+    /**
+     * Get the current auth token, authenticating if needed.
+     */
+    public function getToken(): string
+    {
+        $token = Cache::get($this->getTokenCacheKey());
+
+        if (! $token) {
+            $this->authenticate();
+            $token = Cache::get($this->getTokenCacheKey());
+        }
+
+        return $token;
+    }
+
     /**
      * Get the full cache key for refresh tokens.
      */
@@ -89,7 +109,7 @@ class FlexxusClient implements FlexxusClientInterface
         $endpoint = "{$this->baseUrl}/v2/auth/login";
 
         try {
-            $response = Http::timeout(30)
+            $response = Http::timeout(config('picking.flexxus_timeout', 15))
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->post($endpoint, $payload);
         } catch (ConnectionException $e) {
@@ -164,12 +184,12 @@ class FlexxusClient implements FlexxusClientInterface
                 $token = Cache::get($this->getTokenCacheKey());
             }
 
-            $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
+            $response = Http::timeout(config('picking.flexxus_timeout', 15))->withToken($token)->{$method}($fullUrl, $data);
 
             if ($response->status() === 401) {
                 $this->authenticate();
                 $token = Cache::get($this->getTokenCacheKey());
-                $response = Http::timeout(30)->withToken($token)->{$method}($fullUrl, $data);
+                $response = Http::timeout(config('picking.flexxus_timeout', 15))->withToken($token)->{$method}($fullUrl, $data);
             }
 
             if (! $response->successful()) {
@@ -256,7 +276,7 @@ class FlexxusClient implements FlexxusClientInterface
             return array_map(
                 fn (string $endpoint) => $pool
                     ->withToken($token)
-                    ->timeout(30)
+                    ->timeout(config('picking.flexxus_timeout', 15))
                     ->get("{$baseUrl}{$endpoint}"),
                 $endpoints
             );
