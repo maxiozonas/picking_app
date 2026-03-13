@@ -163,27 +163,31 @@ class WarehouseScopedRegressionTest extends TestCase
             'status' => 'in_progress',
         ]);
 
-        // Mock Flexxus service to avoid external API call
-        $this->instance(
-            \App\Services\Picking\FlexxusPickingService::class,
-            $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class)
-        );
-
-        $mockFlexxus->method('getOrderDetail')->willReturn([
+        // Mock FlexxusOrderServiceInterface for getOrderDetail
+        $mockOrderService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusOrderServiceInterface::class);
+        $mockOrderService->method('getOrderDetail')->willReturn([
             'RAZONSOCIAL' => 'Test Customer',
             'TOTAL' => 1000,
             'DETALLE' => [],
         ]);
+        $this->instance(\App\Services\Picking\Interfaces\FlexxusOrderServiceInterface::class, $mockOrderService);
 
-        $mockFlexxus->method('formatOrderItem')->willReturn([
+        // Mock FlexxusDataFormatter for formatOrderItem
+        $mockFormatter = $this->createMock(\App\Services\Picking\FlexxusDataFormatter::class);
+        $mockFormatter->method('formatOrderItem')->willReturn([
             'product_code' => 'PROD-001',
             'quantity_required' => 10,
             'stock_info' => ['total' => 50],
         ]);
+        $this->instance(\App\Services\Picking\FlexxusDataFormatter::class, $mockFormatter);
 
-        $mockFlexxus->method('getProductStock')->willReturn([
-            'total' => 50,
-        ]);
+        // Mock FlexxusProductServiceInterface for getProductStock
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
+        $mockProductService->method('getProductStock')->willReturn(['total' => 50]);
+        $this->instance(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class, $mockProductService);
+
+        // Re-make the service to pick up the mocked dependencies
+        $this->pickingService = $this->app->make(PickingService::class);
 
         // Act: User2 tries to get order detail for warehouse1 order
         $result = $this->pickingService->getOrderDetail(
@@ -196,7 +200,7 @@ class WarehouseScopedRegressionTest extends TestCase
         $this->assertArrayHasKey('status', $result);
         // Since there's no local progress for this user+warehouse, status should be 'pending'
         $this->assertEquals('pending', $result['status']);
-        $this->assertNull($result['assigned_to']);
+        $this->assertNull($result['assigned_to']['id']);
     }
 
     /**
@@ -229,18 +233,14 @@ class WarehouseScopedRegressionTest extends TestCase
             'status' => 'in_progress',
         ]);
 
-        // Mock Flexxus to return the order (simulating it exists in Flexxus for warehouse2)
-        $this->instance(
-            \App\Services\Picking\FlexxusPickingService::class,
-            $mockFlexxus = \Mockery::mock(\App\Services\Picking\FlexxusPickingService::class)
-        );
-
-        $mockFlexxus->shouldReceive('getOrdersByDateAndWarehouse')
+        // Mock FlexxusOrderServiceInterface
+        $mockOrderService = \Mockery::mock(\App\Services\Picking\Interfaces\FlexxusOrderServiceInterface::class);
+        $mockOrderService->shouldReceive('getOrdersByDateAndWarehouse')
             ->andReturn([
                 ['NUMEROCOMPROBANTE' => '10004'],
             ]);
 
-        $mockFlexxus->shouldReceive('getOrderDetail')
+        $mockOrderService->shouldReceive('getOrderDetail')
             ->andReturn([
                 'RAZONSOCIAL' => 'Test Customer',
                 'TOTAL' => 1000,
@@ -248,9 +248,12 @@ class WarehouseScopedRegressionTest extends TestCase
                     ['CODIGOPARTICULAR' => 'PROD-001', 'PENDIENTE' => 10],
                 ],
             ]);
+        $this->instance(\App\Services\Picking\Interfaces\FlexxusOrderServiceInterface::class, $mockOrderService);
 
-        $mockFlexxus->shouldReceive('getProductStock')
-            ->andReturn(['total' => 50]);
+        // Mock FlexxusProductServiceInterface
+        $mockProductService = \Mockery::mock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
+        $mockProductService->shouldReceive('getProductStock')->andReturn(['total' => 50]);
+        $this->instance(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class, $mockProductService);
 
         // Mock StockCacheService
         $mockCacheService = \Mockery::mock(\App\Services\Picking\Interfaces\StockCacheServiceInterface::class);

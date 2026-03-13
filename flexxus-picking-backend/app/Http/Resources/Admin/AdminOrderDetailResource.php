@@ -3,17 +3,22 @@
 namespace App\Http\Resources\Admin;
 
 use App\Http\Resources\PickingAlertResource;
+use App\Models\PickingOrderProgress;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class AdminOrderDetailResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
+    {
+        if ($this->resource instanceof PickingOrderProgress) {
+            return $this->transformModel();
+        }
+
+        return $this->transformFlexxusData();
+    }
+
+    private function transformModel(): array
     {
         $progress = $this->resource;
 
@@ -33,36 +38,46 @@ class AdminOrderDetailResource extends JsonResource
             ],
             'total_items' => $progress->items_count ?? $progress->items->count(),
             'picked_items' => $progress->items->where('status', 'completed')->count(),
-            'completed_percentage' => $this->calculateCompletedPercentage($progress),
+            'completed_percentage' => $progress->completed_percentage,
             'started_at' => $progress->started_at?->toIso8601String(),
             'completed_at' => $progress->completed_at?->toIso8601String(),
             'created_at' => $progress->created_at?->toIso8601String(),
             'items' => AdminOrderItemResource::collection($progress->items ?? collect()),
             'alerts' => PickingAlertResource::collection($progress->alerts ?? collect()),
             'events' => ($progress->events ?? collect())->map(fn ($e) => [
-                'id'           => $e->id,
-                'event_type'   => $e->event_type,
+                'id' => $e->id,
+                'event_type' => $e->event_type,
                 'product_code' => $e->product_code,
-                'quantity'     => $e->quantity,
-                'message'      => $e->message,
-                'user'         => $e->relationLoaded('user')
+                'quantity' => $e->quantity,
+                'message' => $e->message,
+                'user' => $e->relationLoaded('user')
                     ? ['id' => $e->user?->id, 'name' => $e->user?->name]
                     : null,
-                'created_at'   => $e->created_at?->toIso8601String(),
+                'created_at' => $e->created_at?->toIso8601String(),
             ])->values()->all(),
         ];
     }
 
-    private function calculateCompletedPercentage($progress): float
+    private function transformFlexxusData(): array
     {
-        $totalItems = $progress->items->count();
+        $data = is_object($this->resource) ? (array) $this->resource : $this->resource;
 
-        if ($totalItems === 0) {
-            return 0.0;
-        }
-
-        $pickedItems = $progress->items->where('status', 'completed')->count();
-
-        return round(($pickedItems / $totalItems) * 100, 1);
+        return [
+            'id' => $data['id'] ?? null,
+            'order_number' => $data['order_number'] ?? null,
+            'customer' => $data['customer'] ?? null,
+            'status' => $data['status'] ?? 'pending',
+            'warehouse' => $data['warehouse'] ?? null,
+            'assigned_to' => $data['assigned_to'] ?? null,
+            'total_items' => $data['total_items'] ?? 0,
+            'picked_items' => $data['picked_items'] ?? 0,
+            'completed_percentage' => $data['completed_percentage'] ?? 0.0,
+            'started_at' => $data['started_at'] ?? null,
+            'completed_at' => $data['completed_at'] ?? null,
+            'created_at' => $data['created_at'] ?? null,
+            'items' => $data['items'] ?? [],
+            'alerts' => $data['alerts'] ?? [],
+            'events' => $data['events'] ?? [],
+        ];
     }
 }

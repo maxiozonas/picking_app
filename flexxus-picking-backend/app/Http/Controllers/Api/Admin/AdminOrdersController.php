@@ -56,7 +56,6 @@ class AdminOrdersController extends Controller
      */
     public function show(string $orderNumber): AdminOrderDetailResource|JsonResponse
     {
-        // Normalize to canonical form ("NP 623203") regardless of what the route receives
         $canonical = OrderNumberParser::normalize($orderNumber);
 
         $order = PickingOrderProgress::where('order_number', $canonical)
@@ -67,11 +66,10 @@ class AdminOrdersController extends Controller
             return new AdminOrderDetailResource($order);
         }
 
-        // Order not in local DB — it may be an unstarted Flexxus order
         $flexxusDetail = $this->adminPickingService->getPendingOrderDetail($canonical);
 
         if ($flexxusDetail) {
-            return response()->json(['data' => $flexxusDetail]);
+            return new AdminOrderDetailResource((object) $flexxusDetail);
         }
 
         abort(404, "Order {$canonical} not found");

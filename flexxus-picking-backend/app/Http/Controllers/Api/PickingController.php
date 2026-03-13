@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Picking\CompleteOrderRequest;
 use App\Http\Requests\Picking\CreateAlertRequest;
 use App\Http\Requests\Picking\PickItemRequest;
+use App\Http\Requests\Picking\ResolveAlertRequest;
 use App\Http\Requests\Picking\StartOrderRequest;
 use App\Http\Resources\PickingAlertResource;
 use App\Http\Resources\PickingOrderCollection;
@@ -119,9 +120,7 @@ class PickingController extends Controller
 
         $alert = $this->pickingService->createAlert($data, $request->user()->id, $requestContext);
 
-        return response()->json([
-            'data' => new PickingAlertResource($alert),
-        ], 201);
+        return (new PickingAlertResource($alert))->response()->setStatusCode(201);
     }
 
     public function alerts(Request $request): AnonymousResourceCollection
@@ -132,10 +131,8 @@ class PickingController extends Controller
         return PickingAlertResource::collection($alerts);
     }
 
-    public function resolveAlert(int $id, Request $request): JsonResponse
+    public function resolveAlert(int $id, ResolveAlertRequest $request): JsonResponse
     {
-        $request->validate(['notes' => 'nullable|string']);
-
         $requestContext = array_filter([
             'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
         ], fn ($value) => $value !== null);
@@ -143,12 +140,10 @@ class PickingController extends Controller
         $alert = $this->pickingService->resolveAlert(
             $id,
             $request->user()->id,
-            $request->input('notes', ''),
+            $request->validated('notes', ''),
             $requestContext
         );
 
-        return response()->json([
-            'data' => new PickingAlertResource($alert),
-        ]);
+        return (new PickingAlertResource($alert))->response();
     }
 }

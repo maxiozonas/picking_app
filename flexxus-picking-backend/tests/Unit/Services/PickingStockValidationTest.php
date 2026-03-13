@@ -7,8 +7,10 @@ use App\Models\PickingOrderProgress;
 use App\Models\PickingStockValidation;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Picking\FlexxusPickingService;
+use App\Services\Picking\FlexxusDataFormatter;
 use App\Services\Picking\Interfaces\AlertServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\Interfaces\FlexxusProductServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\PickingService;
@@ -24,7 +26,7 @@ class PickingStockValidationTest extends TestCase
 
     private PickingService $pickingService;
 
-    private FlexxusPickingService $flexxusService;
+    private FlexxusProductServiceInterface $productService;
 
     private User $user;
 
@@ -35,20 +37,24 @@ class PickingStockValidationTest extends TestCase
         parent::setUp();
         Http::fake();
 
-        $this->flexxusService = Mockery::mock(FlexxusPickingService::class);
+        $this->productService = Mockery::mock(FlexxusProductServiceInterface::class);
 
         // Mock Flexxus stock to return valid values
-        $this->flexxusService->shouldReceive('getProductStock')
+        $this->productService->shouldReceive('getProductStock')
             ->andReturn(['total' => 100]);
 
+        $orderService = Mockery::mock(FlexxusOrderServiceInterface::class);
+        $formatter = $this->app->make(FlexxusDataFormatter::class);
         $alertService = $this->app->make(AlertServiceInterface::class);
         $stockCacheService = $this->app->make(StockCacheServiceInterface::class);
         $warehouseContextResolver = $this->app->make(WarehouseExecutionContextResolverInterface::class);
 
-        $stockValidationService = new StockValidationService($this->flexxusService, $alertService);
+        $stockValidationService = new StockValidationService($this->productService, $alertService);
 
         $this->pickingService = new PickingService(
-            $this->flexxusService,
+            $orderService,
+            $this->productService,
+            $formatter,
             $stockValidationService,
             $stockCacheService,
             $warehouseContextResolver
