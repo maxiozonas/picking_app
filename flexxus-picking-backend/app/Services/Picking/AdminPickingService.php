@@ -20,6 +20,10 @@ class AdminPickingService implements AdminPickingServiceInterface
 
     public function getPendingOrders(array $filters = []): LengthAwarePaginator
     {
+        if (empty($filters['warehouse_id'])) {
+            throw new \InvalidArgumentException('warehouse_id is required');
+        }
+
         $warehouses = $this->resolveWarehouses($filters);
         $date = $filters['date_from'] ?? now()->format('Y-m-d');
 
@@ -41,6 +45,10 @@ class AdminPickingService implements AdminPickingServiceInterface
 
     public function refreshPendingOrders(array $filters = []): LengthAwarePaginator
     {
+        if (empty($filters['warehouse_id'])) {
+            throw new \InvalidArgumentException('warehouse_id is required');
+        }
+
         $warehouses = $this->resolveWarehouses($filters);
         $date = $filters['date_from'] ?? now()->format('Y-m-d');
 

@@ -59,6 +59,11 @@ class PickingService implements PickingServiceInterface
         return Warehouse::findOrFail($context->warehouseId);
     }
 
+    private function shouldStartTransaction(): bool
+    {
+        return DB::transactionLevel() === 0;
+    }
+
     public function getAvailableOrders(int $userId, array $filters = [], array $requestContext = []): LengthAwarePaginator
     {
         $context = $this->resolveWarehouseContext($userId, $requestContext);
@@ -338,7 +343,9 @@ class PickingService implements PickingServiceInterface
         );
 
         // Phase 5: Wrap DB updates in transaction for atomicity
-        return DB::transaction(function () use ($canonicalOrderNumber, $productCode, $quantity, $userId, $context, $orderNumber) {
+        $shouldManageTransaction = $this->shouldStartTransaction();
+
+        $callback = function () use ($canonicalOrderNumber, $productCode, $quantity, $userId, $context, $orderNumber) {
             $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
                 ->where('warehouse_id', $context->warehouseId)
                 ->lockForUpdate()
@@ -443,7 +450,13 @@ class PickingService implements PickingServiceInterface
             }
 
             return $result;
-        });
+        };
+
+        if ($shouldManageTransaction) {
+            return DB::transaction($callback);
+        } else {
+            return $callback();
+        }
     }
 
     public function completeOrder(string $orderNumber, int $userId, array $requestContext = []): PickingOrderProgress
@@ -452,7 +465,9 @@ class PickingService implements PickingServiceInterface
         $canonicalOrderNumber = OrderNumberParser::normalize($orderNumber);
 
         // Phase 5: Wrap DB updates in transaction for atomicity
-        return DB::transaction(function () use ($canonicalOrderNumber, $userId, $context, $orderNumber) {
+        $shouldManageTransaction = $this->shouldStartTransaction();
+
+        $callback = function () use ($canonicalOrderNumber, $userId, $context, $orderNumber) {
             $progress = PickingOrderProgress::where('order_number', $canonicalOrderNumber)
                 ->where('warehouse_id', $context->warehouseId)
                 ->lockForUpdate()
@@ -503,7 +518,13 @@ class PickingService implements PickingServiceInterface
             ]);
 
             return $progress->fresh();
-        });
+        };
+
+        if ($shouldManageTransaction) {
+            return DB::transaction($callback);
+        } else {
+            return $callback();
+        }
     }
 
     public function createAlert(array $data, int $userId, array $requestContext = []): PickingAlert
