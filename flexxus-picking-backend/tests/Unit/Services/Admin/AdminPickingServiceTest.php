@@ -52,12 +52,14 @@ class AdminPickingServiceTest extends TestCase
                 'RAZONSOCIAL' => 'CONSTRUCTORA S.A.',
                 'TOTAL' => 150000.50,
                 'FECHACOMPROBANTE' => '2024-03-10T08:30:00Z',
+                'DEPOSITO' => $warehouse->name,
             ],
             [
                 'NUMEROCOMPROBANTE' => '623203',
                 'RAZONSOCIAL' => 'OBRA GENIAL',
                 'TOTAL' => 75000.00,
                 'FECHACOMPROBANTE' => '2024-03-10T09:15:00Z',
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -96,6 +98,7 @@ class AdminPickingServiceTest extends TestCase
                 'RAZONSOCIAL' => 'CONSTRUCTORA S.A.',
                 'TOTAL' => 150000.50,
                 'FECHACOMPROBANTE' => '2024-03-10T08:30:00Z',
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -146,12 +149,14 @@ class AdminPickingServiceTest extends TestCase
                 'RAZONSOCIAL' => 'CONSTRUCTORA S.A.',
                 'TOTAL' => 150000.50,
                 'FECHACOMPROBANTE' => '2024-03-10T08:30:00Z',
+                'DEPOSITO' => $warehouse->name,
             ],
             [
                 'NUMEROCOMPROBANTE' => '623203',
                 'RAZONSOCIAL' => 'OBRA GENIAL',
                 'TOTAL' => 75000.00,
                 'FECHACOMPROBANTE' => '2024-03-10T09:15:00Z',
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -183,12 +188,12 @@ class AdminPickingServiceTest extends TestCase
         $this->assertCount(2, $orders);
 
         // First order should be pending (not in local DB)
-        $pendingOrder = collect($orders)->first(fn ($o) => $o['order_number'] === '623202');
+        $pendingOrder = collect($orders)->first(fn ($o) => $o['order_number'] === 'NP 623202');
         $this->assertEquals('pending', $pendingOrder['status']);
         $this->assertNull($pendingOrder['assigned_to']);
 
         // Second order should be in_progress (in local DB)
-        $inProgressOrder = collect($orders)->first(fn ($o) => $o['order_number'] === '623203');
+        $inProgressOrder = collect($orders)->first(fn ($o) => $o['order_number'] === 'NP 623203');
         $this->assertEquals('in_progress', $inProgressOrder['status']);
         $this->assertNotNull($inProgressOrder['assigned_to']);
         $this->assertEquals($user->id, $inProgressOrder['assigned_to']['id']);
@@ -206,11 +211,13 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CONSTRUCTORA S.A.',
                 'TOTAL' => 150000.50,
+                'DEPOSITO' => $warehouse->name,
             ],
             [
                 'NUMEROCOMPROBANTE' => '623203',
                 'RAZONSOCIAL' => 'OBRA GENIAL',
                 'TOTAL' => 75000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -229,7 +236,7 @@ class AdminPickingServiceTest extends TestCase
 
         // Assert
         $this->assertCount(1, $result->items());
-        $this->assertEquals('623202', $result->items()[0]['order_number']);
+        $this->assertEquals('NP 623202', $result->items()[0]['order_number']);
     }
 
     public function test_get_pending_orders_paginates_results(): void
@@ -242,6 +249,7 @@ class AdminPickingServiceTest extends TestCase
             'NUMEROCOMPROBANTE' => strval(623200 + $i),
             'RAZONSOCIAL' => "CLIENTE {$i}",
             'TOTAL' => 1000.00,
+            'DEPOSITO' => $warehouse->name,
         ], range(1, 20));
 
         $mockClient = $this->createMock(FlexxusClient::class);
@@ -273,6 +281,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -312,6 +321,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name, // Required for warehouse filtering
             ],
         ];
 
@@ -344,6 +354,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -385,6 +396,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -425,6 +437,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -460,6 +473,7 @@ class AdminPickingServiceTest extends TestCase
                 'NUMEROCOMPROBANTE' => '623202',
                 'RAZONSOCIAL' => 'CLIENTE TEST',
                 'TOTAL' => 1000.00,
+                'DEPOSITO' => $warehouse->name,
             ],
         ];
 
@@ -491,8 +505,8 @@ class AdminPickingServiceTest extends TestCase
         $warehouse2 = Warehouse::factory()->create();
 
         $flexxusOrders = [
-            ['NUMEROCOMPROBANTE' => '623202', 'RAZONSOCIAL' => 'CLIENTE 1', 'TOTAL' => 1000],
-            ['NUMEROCOMPROBANTE' => '623203', 'RAZONSOCIAL' => 'CLIENTE 2', 'TOTAL' => 2000],
+            ['NUMEROCOMPROBANTE' => '623202', 'RAZONSOCIAL' => 'CLIENTE 1', 'TOTAL' => 1000, 'DEPOSITO' => $warehouse1->name],
+            ['NUMEROCOMPROBANTE' => '623203', 'RAZONSOCIAL' => 'CLIENTE 2', 'TOTAL' => 2000, 'DEPOSITO' => $warehouse2->name],
         ];
 
         $mockClient = $this->createMock(FlexxusClient::class);

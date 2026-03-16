@@ -16,6 +16,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Field removal is irreversible - restore from backup if needed
+        Schema::table('users', function (Blueprint $table) {
+            $table->unsignedBigInteger('original_warehouse_id')->nullable()->after('warehouse_id');
+            $table->foreign('original_warehouse_id')->references('id')->on('warehouses')->onDelete('set null');
+        });
     }
 };

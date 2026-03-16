@@ -34,6 +34,8 @@ class PickingServiceMobileContractTest extends TestCase
 
     private Warehouse $warehouse;
 
+    private array $requestContext;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -62,6 +64,8 @@ class PickingServiceMobileContractTest extends TestCase
         $this->user = User::factory()->create([
             'warehouse_id' => $this->warehouse->id,
         ]);
+
+        $this->requestContext = $this->getRequestContext($this->warehouse->id, $this->user->id);
 
         $context = new WarehouseExecutionContext(
             $this->warehouse->id,
@@ -98,8 +102,8 @@ class PickingServiceMobileContractTest extends TestCase
                 ],
             ]);
 
-        $byCustomer = $this->service->getAvailableOrders($this->user->id, ['search' => 'acme']);
-        $byOrderNumber = $this->service->getAvailableOrders($this->user->id, ['search' => '3201']);
+        $byCustomer = $this->service->getAvailableOrders($this->user->id, ['search' => 'acme'], $this->requestContext);
+        $byOrderNumber = $this->service->getAvailableOrders($this->user->id, ['search' => '3201'], $this->requestContext);
 
         $this->assertCount(1, $byCustomer->items());
         $this->assertSame('623200', $byCustomer->items()[0]['order_number']);
@@ -127,12 +131,12 @@ class PickingServiceMobileContractTest extends TestCase
             ->with($today, Mockery::type(Warehouse::class))
             ->andReturn($orders);
 
-        $defaultPage = $this->service->getAvailableOrders($this->user->id);
+        $defaultPage = $this->service->getAvailableOrders($this->user->id, [], $this->requestContext);
         $secondPage = $this->service->getAvailableOrders($this->user->id, [
             'page' => 2,
             'per_page' => 10,
             'status' => 'all',
-        ]);
+        ], $this->requestContext);
 
         $this->assertSame(20, $defaultPage->perPage());
         $this->assertSame(25, $defaultPage->total());
