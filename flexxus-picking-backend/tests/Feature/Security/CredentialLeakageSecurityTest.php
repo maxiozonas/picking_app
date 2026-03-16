@@ -4,12 +4,12 @@ namespace Tests\Feature\Security;
 
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class CredentialLeakageSecurityTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_warehouse_model_hides_credentials_from_serialization(): void
     {

@@ -7,7 +7,7 @@ use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\PickingServiceInterface;
 use App\Services\Picking\WarehouseExecutionContext;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
@@ -15,7 +15,7 @@ use Tests\TestCase;
 
 class WarehouseOverrideMiddlewareTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function setUp(): void
     {

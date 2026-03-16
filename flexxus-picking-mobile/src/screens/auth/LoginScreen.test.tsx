@@ -24,7 +24,7 @@ describe('LoginScreen', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('operario'), '  operario.turno  ')
     fireEvent.changeText(screen.getByPlaceholderText('••••••••'), 'secret123')
-    fireEvent.press(screen.getByText('Ingresar al picking'))
+    fireEvent.press(screen.getByText('Ingresar'))
 
     expect(mutate).toHaveBeenCalledWith({
       username: 'operario.turno',

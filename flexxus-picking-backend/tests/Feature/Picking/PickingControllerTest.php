@@ -6,14 +6,14 @@ use App\Models\PickingAlert;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Services\Picking\PickingServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
 
 class PickingControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function setUp(): void
     {
@@ -28,10 +28,12 @@ class PickingControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], $requestContext)
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15));
         });
 
@@ -49,11 +51,12 @@ class PickingControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $orderNumber = 'ORD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user, $requestContext) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, $requestContext)
                 ->andReturn([
                     'order_number' => $orderNumber,
                     'customer_name' => 'Test Customer',
@@ -78,15 +81,16 @@ class PickingControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $orderNumber = 'ORD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user, $requestContext) {
             $progress = PickingOrderProgress::factory()->make([
                 'order_number' => $orderNumber,
                 'user_id' => $user->id,
             ]);
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, $requestContext)
                 ->andReturn($progress);
         });
 
@@ -107,11 +111,12 @@ class PickingControllerTest extends TestCase
 
         $orderNumber = 'ORD-001';
         $productCode = 'PROD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user, $requestContext) {
             $mock->shouldReceive('pickItem')
                 ->once()
-                ->with($orderNumber, $productCode, 5, $user->id)
+                ->with($orderNumber, $productCode, 5, $user->id, $requestContext)
                 ->andReturn([
                     'picked_quantity' => 5,
                     'remaining_quantity' => 0,
@@ -153,11 +158,12 @@ class PickingControllerTest extends TestCase
 
         $orderNumber = 'ORD-001';
         $productCode = 'PROD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user, $requestContext) {
             $mock->shouldReceive('pickItem')
                 ->once()
-                ->with($orderNumber, $productCode, 5, $user->id)
+                ->with($orderNumber, $productCode, 5, $user->id, $requestContext)
                 ->andReturn([
                     'product_code' => $productCode,
                     'quantity_required' => 10,
@@ -195,11 +201,12 @@ class PickingControllerTest extends TestCase
 
         $orderNumber = 'ORD-001';
         $productCode = 'PROD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user, $requestContext) {
             $mock->shouldReceive('pickItem')
                 ->once()
-                ->with($orderNumber, $productCode, 5, $user->id)
+                ->with($orderNumber, $productCode, 5, $user->id, $requestContext)
                 ->andReturn([
                     'product_code' => $productCode,
                     'quantity_required' => 10,
@@ -238,15 +245,16 @@ class PickingControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $orderNumber = 'ORD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $user, $requestContext) {
             $progress = PickingOrderProgress::factory()->completed()->make([
                 'order_number' => $orderNumber,
                 'user_id' => $user->id,
             ]);
             $mock->shouldReceive('completeOrder')
                 ->once()
-                ->with($orderNumber, $user->id)
+                ->with($orderNumber, $user->id, $requestContext)
                 ->andReturn($progress);
         });
 
@@ -269,14 +277,15 @@ class PickingControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $orderNumber = 'ORD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $alert = PickingAlert::factory()->make([
                 'user_id' => $user->id,
             ]);
             $mock->shouldReceive('createAlert')
                 ->once()
-                ->with(\Mockery::type('array'), $user->id)
+                ->with(\Mockery::type('array'), $user->id, $requestContext)
                 ->andReturn($alert);
         });
 
@@ -378,11 +387,13 @@ class PickingControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
         // List response envelope
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], $requestContext)
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_number' => 'NP 623200',
@@ -399,10 +410,10 @@ class PickingControllerTest extends TestCase
             ]);
 
         // Detail response envelope
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn([
                     'order_number' => 'NP 623200',
                     'customer_name' => 'Test Customer',
@@ -416,14 +427,14 @@ class PickingControllerTest extends TestCase
             ]);
 
         // Start response envelope
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $progress = PickingOrderProgress::factory()->make([
                 'order_number' => 'NP 623200',
                 'user_id' => $user->id,
             ]);
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn($progress);
         });
 
@@ -439,6 +450,8 @@ class PickingControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
         $coreKeys = [
             'order_number',
             'status',
@@ -447,10 +460,10 @@ class PickingControllerTest extends TestCase
         ];
 
         // List response has core keys
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys, $requestContext) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], $requestContext)
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     array_merge([
                         'order_number' => 'NP 623200',
@@ -469,10 +482,10 @@ class PickingControllerTest extends TestCase
         }
 
         // Detail response has core keys
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $coreKeys, $requestContext) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn(array_merge([
                     'order_number' => 'NP 623200',
                     'customer_name' => 'Test Customer',
@@ -489,7 +502,7 @@ class PickingControllerTest extends TestCase
         }
 
         // Start response has core keys
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $progress = PickingOrderProgress::factory()->make([
                 'order_number' => 'NP 623200',
                 'user_id' => $user->id,
@@ -498,7 +511,7 @@ class PickingControllerTest extends TestCase
             ]);
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn($progress);
         });
 
@@ -514,14 +527,16 @@ class PickingControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
         // All responses should have order_type and order_number
         $identifierKeys = ['order_type', 'order_number'];
 
         // List response
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [])
+                ->with($user->id, [], $requestContext)
                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([
                     [
                         'order_type' => 'NP',
@@ -538,10 +553,10 @@ class PickingControllerTest extends TestCase
         }
 
         // Detail response
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn([
                     'order_type' => 'NP',
                     'order_number' => '623200',
@@ -556,7 +571,7 @@ class PickingControllerTest extends TestCase
         }
 
         // Start response
-        $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
             $progress = PickingOrderProgress::factory()->make([
                 'order_number' => 'NP 623200',
                 'user_id' => $user->id,
@@ -566,7 +581,7 @@ class PickingControllerTest extends TestCase
 
             $mock->shouldReceive('startOrder')
                 ->once()
-                ->with('NP-623200', $user->id)
+                ->with('NP-623200', $user->id, $requestContext)
                 ->andReturn($progress);
         });
 

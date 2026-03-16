@@ -48,7 +48,8 @@ export function OperatorStack() {
 
 const styles = StyleSheet.create({
   logoutButton: {
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
     minHeight: 38,

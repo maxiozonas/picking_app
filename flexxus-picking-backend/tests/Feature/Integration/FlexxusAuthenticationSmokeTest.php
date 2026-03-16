@@ -5,12 +5,12 @@ namespace Tests\Feature\Integration;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class FlexxusAuthenticationSmokeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_warehouse_002_rondeau_can_authenticate_with_flexxus(): void
     {

@@ -28,6 +28,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
 
     private PickingService $pickingService;
 
+    private array $requestContext;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,6 +42,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
         $this->user = User::factory()->create([
             'warehouse_id' => $this->warehouse->id,
         ]);
+
+        $this->requestContext = $this->getRequestContext($this->warehouse->id, $this->user->id);
 
         $this->pickingService = $this->app->make(PickingService::class);
     }
@@ -58,7 +62,7 @@ class CompleteOrderTransactionSafetyTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
             'status' => 'in_progress',
             'started_at' => now(),
-            'order_number' => 'NP CO01',
+            'order_number' => 'NP 2001',
         ]);
 
         // Create one completed item and one incomplete item
@@ -89,7 +93,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
         try {
             $this->pickingService->completeOrder(
                 $order->order_number,
-                $this->user->id
+                $this->user->id,
+                $this->requestContext
             );
         } catch (InvalidOrderStateException $e) {
             // Assert: Order should not be partially updated
@@ -116,7 +121,7 @@ class CompleteOrderTransactionSafetyTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
             'status' => 'in_progress',
             'started_at' => now(),
-            'order_number' => 'NP CO02',
+            'order_number' => 'NP 2002',
         ]);
 
         PickingItemProgress::factory()->create([
@@ -140,7 +145,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
         // First complete attempt
         $result1 = $this->pickingService->completeOrder(
             $order->order_number,
-            $this->user->id
+            $this->user->id,
+            $this->requestContext
         );
 
         // Assert: First attempt succeeds
@@ -170,7 +176,7 @@ class CompleteOrderTransactionSafetyTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
             'status' => 'in_progress',
             'started_at' => now(),
-            'order_number' => 'NP CO03',
+            'order_number' => 'NP 2003',
         ]);
 
         PickingItemProgress::factory()->create([
@@ -205,7 +211,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
         // Act: Complete order
         $result = $this->pickingService->completeOrder(
             $order->order_number,
-            $this->user->id
+            $this->user->id,
+            $this->requestContext
         );
 
         // Assert: Order updated atomically
@@ -237,7 +244,7 @@ class CompleteOrderTransactionSafetyTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
             'status' => 'in_progress',
             'started_at' => now(),
-            'order_number' => 'NP CO04',
+            'order_number' => 'NP 2004',
         ]);
 
         PickingItemProgress::factory()->create([
@@ -262,7 +269,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
 
         $this->pickingService->completeOrder(
             $order->order_number,
-            $this->user->id
+            $this->user->id,
+            $this->requestContext
         );
 
         // Assert: Order not modified
@@ -287,7 +295,7 @@ class CompleteOrderTransactionSafetyTest extends TestCase
             'status' => 'completed',
             'started_at' => now()->subHour(),
             'completed_at' => now()->subMinutes(30),
-            'order_number' => 'NP CO05',
+            'order_number' => 'NP 2005',
         ]);
 
         PickingItemProgress::factory()->create([
@@ -306,7 +314,8 @@ class CompleteOrderTransactionSafetyTest extends TestCase
 
         $this->pickingService->completeOrder(
             $order->order_number,
-            $this->user->id
+            $this->user->id,
+            $this->requestContext
         );
 
         // Assert: Order not modified

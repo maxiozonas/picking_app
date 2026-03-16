@@ -7,13 +7,13 @@ use App\Models\PickingItemProgress;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AdminOrdersTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     private User $admin;
 

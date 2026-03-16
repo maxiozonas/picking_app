@@ -7,7 +7,7 @@ use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Spatie\Permission\Models\Role;
@@ -15,7 +15,7 @@ use Tests\TestCase;
 
 class AdminPendingOrdersTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     private User $admin;
 

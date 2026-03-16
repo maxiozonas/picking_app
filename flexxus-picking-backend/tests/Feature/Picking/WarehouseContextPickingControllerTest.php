@@ -6,14 +6,14 @@ use App\Exceptions\Picking\WarehouseMismatchException;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\PickingServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
 
 class WarehouseContextPickingControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function setUp(): void
     {

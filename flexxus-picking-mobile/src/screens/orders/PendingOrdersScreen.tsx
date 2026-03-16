@@ -75,11 +75,10 @@ export function PendingOrdersScreen() {
     <View style={styles.listHeader}>
       <View style={styles.banner}>
         <View style={styles.bannerRow}>
-          <StatusChip label="Deposito activo" tone="progress" />
+          <StatusChip label="Activo" tone="progress" />
           <Text style={styles.bannerCode}>{user?.warehouse?.code ?? '---'}</Text>
         </View>
         <Text style={styles.bannerTitle}>{formatWarehouseLabel(user?.warehouse)}</Text>
-        <Text style={styles.bannerText}>Los pedidos visibles ya llegan filtrados por tu contexto operativo. Arrastra para refrescar o busca por numero y cliente.</Text>
       </View>
 
       <OrderSearchBar
@@ -96,7 +95,6 @@ export function PendingOrdersScreen() {
       <Screen
         eyebrow="Deposito asignado"
         title={formatWarehouseLabel(user?.warehouse)}
-        subtitle="Sincronizamos el tablero operativo antes de liberar el listado activo."
       >
         {header}
         <LoadingBlock label="Buscando pedidos pendientes..." />
@@ -109,7 +107,6 @@ export function PendingOrdersScreen() {
       <Screen
         eyebrow="Deposito asignado"
         title={formatWarehouseLabel(user?.warehouse)}
-        subtitle="No pudimos cargar la cola operativa del deposito."
       >
         {header}
         <ErrorState
@@ -128,7 +125,6 @@ export function PendingOrdersScreen() {
     <Screen
       eyebrow="Deposito asignado"
       title={formatWarehouseLabel(user?.warehouse)}
-      subtitle="Pedidos pendientes e iniciados listos para entrar al detalle desde una sola mano."
     >
       <FlashList
         contentContainerStyle={styles.listContent}
@@ -138,7 +134,7 @@ export function PendingOrdersScreen() {
         ListEmptyComponent={
           <EmptyState
             title={debouncedSearch ? 'Sin coincidencias en este deposito' : 'No hay pedidos activos'}
-            message={debouncedSearch ? 'Proba otro numero de pedido o nombre de cliente. La lista sigue lista para refrescar.' : 'Cuando entren pedidos pendientes o en curso apareceran aca sin cambiar de pantalla.'}
+            message={debouncedSearch ? 'Proba otra busqueda.' : 'La cola operativa esta vacia.'}
           />
         }
         ListFooterComponent={
@@ -173,11 +169,12 @@ const styles = StyleSheet.create({
   },
   banner: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
-    gap: spacing.sm,
+    gap: spacing.xs,
     padding: spacing.lg,
+    ...theme.shadows.card,
   },
   bannerRow: {
     alignItems: 'center',
@@ -194,12 +191,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
     fontSize: theme.typography.fontSize.xxl,
-  },
-  bannerText: {
-    color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
-    lineHeight: 22,
   },
   separator: {
     height: spacing.md,

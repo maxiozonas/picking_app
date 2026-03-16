@@ -20,15 +20,17 @@ export function LoginScreen() {
   return (
     <Screen
       eyebrow="Operadores"
-      title="Picking en movimiento"
-      subtitle="Ingresa con tu usuario de deposito. La app valida la sesion con el backend antes de abrir el flujo operativo."
+      title="Acceso operativo"
       scrollable
     >
       <View style={styles.heroCard}>
-        <Text style={styles.heroMetric}>01</Text>
+        <View style={styles.heroBadgeRow}>
+          <Text style={styles.heroBadge}>Flexxus</Text>
+          <Text style={styles.heroMeta}>Mobile</Text>
+        </View>
         <View style={styles.heroCopy}>
-          <Text style={styles.heroTitle}>Acceso directo al turno</Text>
-          <Text style={styles.heroText}>Sin menus densos ni cambios de deposito manuales. El contexto llega desde tu cuenta.</Text>
+          <Text style={styles.heroTitle}>Picking</Text>
+          <Text style={styles.heroText}>Inicio de turno</Text>
         </View>
       </View>
 
@@ -52,7 +54,7 @@ export function LoginScreen() {
         />
         <Button
           disabled={!canSubmit}
-          label="Ingresar al picking"
+          label="Ingresar"
           loading={loginMutation.isPending}
           onPress={() => loginMutation.mutate({ username: username.trim(), password })}
         />
@@ -71,41 +73,55 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   heroCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.lg,
     marginBottom: spacing.lg,
     padding: spacing.lg,
+    ...theme.shadows.card,
   },
-  heroMetric: {
+  heroBadgeRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  heroBadge: {
     color: colors.accent,
     fontFamily: theme.typography.fontFamily.display,
-    fontSize: 52,
-    lineHeight: 52,
+    fontSize: theme.typography.fontSize.sm,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  heroMeta: {
+    color: colors.textMuted,
+    fontFamily: theme.typography.fontFamily.mono,
+    fontSize: theme.typography.fontSize.sm,
   },
   heroCopy: {
-    flex: 1,
     gap: spacing.xs,
   },
   heroTitle: {
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
-    fontSize: theme.typography.fontSize.xxl,
+    fontSize: 58,
+    lineHeight: 52,
+    textTransform: 'uppercase',
   },
   heroText: {
-    color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
-    lineHeight: 22,
+    color: colors.textSoft,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.lg,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   formCard: {
     backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.lg,
+    ...theme.shadows.card,
   },
 })

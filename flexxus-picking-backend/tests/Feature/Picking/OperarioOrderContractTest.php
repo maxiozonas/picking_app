@@ -4,14 +4,14 @@ namespace Tests\Feature\Picking;
 
 use App\Models\User;
 use App\Services\Picking\PickingServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
 
 class OperarioOrderContractTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_list_response_exposes_split_order_identifier_fields(): void
     {

@@ -107,7 +107,7 @@ describe('PendingOrdersScreen', () => {
 
     expect(mockedUseInfinitePendingOrders).toHaveBeenLastCalledWith('')
 
-    fireEvent.changeText(screen.getByPlaceholderText('NP 623200 o cliente'), 'Acme')
+    fireEvent.changeText(screen.getByPlaceholderText('Buscar pedido'), 'Acme')
 
     expect(mockedUseInfinitePendingOrders).toHaveBeenLastCalledWith('')
 

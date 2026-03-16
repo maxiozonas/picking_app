@@ -21,12 +21,21 @@ class PickingServiceWarehouseIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private array $requestContext;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Each test creates its own warehouses, so no shared state here
+    }
+
     public function test_get_order_detail_reads_local_progress_only_for_user_warehouse(): void
     {
         $warehouseA = Warehouse::factory()->create(['code' => 'RONDEAU']);
         $warehouseB = Warehouse::factory()->create(['code' => 'CENTRO']);
         $user = User::factory()->create(['warehouse_id' => $warehouseA->id]);
         $orderNumber = 'NP 12345';
+        $requestContext = $this->getRequestContext($warehouseA->id, $user->id);
 
         PickingOrderProgress::factory()->create([
             'order_number' => $orderNumber,
@@ -54,7 +63,7 @@ class PickingServiceWarehouseIsolationTest extends TestCase
             $this->app->make(WarehouseExecutionContextResolverInterface::class)
         );
 
-        $detail = $service->getOrderDetail($orderNumber, $user->id);
+        $detail = $service->getOrderDetail($orderNumber, $user->id, $requestContext);
 
         $this->assertSame('pending', $detail['status']);
         $this->assertNull($detail['assigned_to']['id']);
@@ -66,6 +75,7 @@ class PickingServiceWarehouseIsolationTest extends TestCase
         $warehouseB = Warehouse::factory()->create(['code' => 'CENTRO']);
         $user = User::factory()->create(['warehouse_id' => $warehouseA->id]);
         $orderNumber = 'NP 55555';
+        $requestContext = $this->getRequestContext($warehouseA->id, $user->id);
 
         PickingOrderProgress::factory()->create([
             'order_number' => $orderNumber,
@@ -91,6 +101,6 @@ class PickingServiceWarehouseIsolationTest extends TestCase
 
         $this->expectException(OrderNotFoundException::class);
 
-        $service->pickItem($orderNumber, 'PROD-001', 1, $user->id);
+        $service->pickItem($orderNumber, 'PROD-001', 1, $user->id, $requestContext);
     }
 }

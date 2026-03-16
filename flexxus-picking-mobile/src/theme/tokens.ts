@@ -12,6 +12,13 @@ export const theme = {
     lineHeight,
   },
   shadows: {
+    card: {
+      shadowColor: '#000000',
+      shadowOpacity: 0.22,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+    },
     accent: {
       shadowColor: colors.accent,
       shadowOpacity: 0.18,

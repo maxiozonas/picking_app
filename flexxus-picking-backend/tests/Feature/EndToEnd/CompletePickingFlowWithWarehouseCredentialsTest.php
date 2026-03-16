@@ -5,12 +5,12 @@ namespace Tests\Feature\EndToEnd;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class CompletePickingFlowWithWarehouseCredentialsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_complete_operator_login_to_flexxus_client_flow(): void
     {

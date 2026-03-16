@@ -9,10 +9,8 @@ import { getCurrentUser } from '../features/auth/api'
 import { RootNavigator } from '../navigation/RootNavigator'
 import { useAuthStore } from '../stores/auth-store'
 
-// Prevent splash screen from auto-hiding while we load custom fonts
 void SplashScreen.preventAutoHideAsync()
 
-// Font configuration matching desktop weights
 const FONT_CONFIG = {
   'IBM Plex Sans': require('../../assets/fonts/IBM Plex Sans-Regular.ttf'),
   'IBM Plex Sans-Medium': require('../../assets/fonts/IBM Plex Sans-Medium.ttf'),
@@ -35,17 +33,15 @@ export function AppBootstrap() {
     void bootstrap(getCurrentUser)
   }, [bootstrap])
 
-  // Hide splash screen when fonts AND auth state are loaded
   useEffect(() => {
     if (fontsLoaded && hasHydrated && bootstrapStatus !== 'restoring') {
       void SplashScreen.hideAsync()
     }
   }, [fontsLoaded, hasHydrated, bootstrapStatus])
 
-  // Show loading state while fonts load OR auth state restores
   if (!fontsLoaded || !hasHydrated || bootstrapStatus === 'restoring') {
     return (
-      <Screen eyebrow="Inicio seguro" title="Validando sesion" subtitle="Confirmamos deposito y credenciales antes de liberar la operacion.">
+      <Screen eyebrow="Inicio seguro" title="Validando sesion">
         <LoadingBlock />
       </Screen>
     )
@@ -53,10 +49,10 @@ export function AppBootstrap() {
 
   if (bootstrapStatus === 'authenticated' && (!user?.warehouse || user.warehouse.isActive === false)) {
     return (
-      <Screen eyebrow="Asignacion requerida" title="No hay deposito operativo" subtitle="La cuenta inicio sesion, pero el backend no devolvio un deposito utilizable.">
+      <Screen eyebrow="Asignacion requerida" title="No hay deposito operativo">
         <ErrorState
           actionLabel="Cerrar sesion"
-          message="Pedi a un administrador que revise la asignacion del operario antes de reintentar."
+          message="Revisa la asignacion del operario."
           onAction={() => {
             void logout()
           }}

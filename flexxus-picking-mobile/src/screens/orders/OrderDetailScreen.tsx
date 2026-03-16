@@ -217,7 +217,6 @@ export function OrderDetailScreen() {
       <Screen
         eyebrow="Pedido"
         title={formatOrderCode(undefined, orderNumber)}
-        subtitle="Sincronizamos items, progreso y contexto operativo antes de liberar el flujo de picking."
       >
         <LoadingBlock label="Cargando detalle del pedido..." />
       </Screen>
@@ -229,7 +228,6 @@ export function OrderDetailScreen() {
       <Screen
         eyebrow="Pedido"
         title={formatOrderCode(undefined, orderNumber)}
-        subtitle="Este pedido ya no esta disponible o el deposito perdio conectividad con el detalle."
       >
         <ErrorState actionLabel="Reintentar" message={detailQuery.error?.message ?? 'No pudimos abrir el pedido.'} onAction={handleRetry} title="El detalle quedo fuera de alcance" />
         <Button label="Volver a pedidos" onPress={() => navigation.goBack()} variant="ghost" />
@@ -262,7 +260,6 @@ export function OrderDetailScreen() {
       eyebrow="Picking activo"
       footer={footer}
       scrollable
-      subtitle="Detalle, picks y estado sincronizados con el backend para operar sin salir del flujo."
       title={formatOrderCode(detail.orderType, detail.orderNumber)}
     >
       <View style={styles.content}>
@@ -287,11 +284,7 @@ export function OrderDetailScreen() {
         <View style={styles.alertBanner}>
           <View style={styles.alertBannerCopy}>
             <Text style={styles.alertBannerTitle}>Incidencias del pedido</Text>
-            <Text style={styles.alertBannerText}>
-              {unresolvedAlerts > 0
-                ? `Hay ${unresolvedAlerts} alerta${unresolvedAlerts === 1 ? '' : 's'} abierta${unresolvedAlerts === 1 ? '' : 's'}. Si aparece una nueva traba, reportala sin salir del detalle.`
-                : 'Si un item no cierra por stock, ubicacion o diferencia fisica, crea una alerta para que admin pueda actuar.'}
-            </Text>
+            <Text style={styles.alertBannerText}>{unresolvedAlerts > 0 ? 'Requiere seguimiento' : 'Sin bloqueos activos'}</Text>
           </View>
           <StatusChip label={unresolvedAlerts > 0 ? `${unresolvedAlerts} abierta${unresolvedAlerts === 1 ? '' : 's'}` : 'Sin alertas'} tone={unresolvedAlerts > 0 ? 'warning' : 'success'} />
         </View>
@@ -302,7 +295,7 @@ export function OrderDetailScreen() {
             <Text style={styles.sectionMeta}>{detail.items.length} posiciones</Text>
           </View>
           {detail.items.length === 0 ? (
-            <EmptyState title="Sin items cargados" message="El backend no devolvio posiciones pickeables para este pedido. Volve a sincronizar o regresa a la cola." />
+            <EmptyState title="Sin items cargados" message="No hay posiciones disponibles." />
           ) : (
             detail.items.map((item) => (
               <PickItemCard
@@ -325,7 +318,7 @@ export function OrderDetailScreen() {
             <Text style={styles.sectionMeta}>{detail.alerts.length}</Text>
           </View>
           {detail.alerts.length === 0 ? (
-            <EmptyState title="Sin alertas reportadas" message="Cuando el pedido tenga incidencias cargadas apareceran aca con severidad y momento de creacion." />
+            <EmptyState title="Sin alertas reportadas" message="No hay incidencias cargadas." />
           ) : (
             detail.alerts.map((alert) => (
               <View key={alert.id} style={styles.timelineCard}>
@@ -346,7 +339,7 @@ export function OrderDetailScreen() {
             <Text style={styles.sectionMeta}>{detail.events.length}</Text>
           </View>
           {detail.events.length === 0 ? (
-            <EmptyState title="Todavia sin eventos" message="Al iniciar, pickear o completar el pedido, el historial queda visible aca para seguimiento rapido." />
+            <EmptyState title="Todavia sin eventos" message="Sin actividad registrada." />
           ) : (
             detail.events.map((event) => (
               <View key={event.id} style={styles.timelineCard}>
@@ -409,8 +402,8 @@ const styles = StyleSheet.create({
   feedbackMessage: {
     color: colors.textMuted,
     fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
-    lineHeight: 22,
+    fontSize: theme.typography.fontSize.sm,
+    lineHeight: 20,
   },
   controlRow: {
     flexDirection: 'row',
@@ -419,7 +412,7 @@ const styles = StyleSheet.create({
   },
   alertBanner: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: 'row',
@@ -463,7 +456,7 @@ const styles = StyleSheet.create({
   },
   timelineCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.xs,

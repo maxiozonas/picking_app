@@ -4,13 +4,13 @@ namespace Tests\Feature\Admin;
 
 use App\Models\User;
 use App\Models\Warehouse;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class WarehouseAssignmentTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function setUp(): void
     {
@@ -51,13 +51,9 @@ class WarehouseAssignmentTest extends TestCase
             ->assertJson([
                 'message' => 'Warehouse assigned successfully',
                 'data' => [
-                    'user_id' => $user->id,
-                    'warehouse_id' => $warehouse->id,
-                    'warehouse' => [
-                        'id' => $warehouse->id,
-                        'code' => $warehouse->code,
-                        'name' => $warehouse->name,
-                    ],
+                    'id' => $warehouse->id,
+                    'code' => $warehouse->code,
+                    'name' => $warehouse->name,
                 ],
             ]);
 
@@ -84,7 +80,7 @@ class WarehouseAssignmentTest extends TestCase
         $response = $this->postJson("/api/admin/users/{$user->id}/warehouses/{$newWarehouse->id}");
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.warehouse_id', $newWarehouse->id);
+            ->assertJsonPath('data.id', $newWarehouse->id);
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -112,9 +108,7 @@ class WarehouseAssignmentTest extends TestCase
         $response = $this->deleteJson("/api/admin/users/{$user->id}/warehouses/{$warehouse1->id}");
 
         $response->assertStatus(422)
-            ->assertJson([
-                'message' => 'Cannot remove primary warehouse. Assign a new warehouse first.',
-            ]);
+            ->assertJsonPath('error.message', 'Cannot remove primary warehouse. Assign a new warehouse first.');
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -137,23 +131,19 @@ class WarehouseAssignmentTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    'warehouse' => [
-                        'id',
-                        'code',
-                        'name',
-                        'client',
-                        'branch',
-                        'is_active',
-                    ],
+                    'id',
+                    'code',
+                    'name',
+                    'client',
+                    'branch',
+                    'is_active',
                 ],
             ])
             ->assertJson([
                 'data' => [
-                    'warehouse' => [
-                        'id' => $warehouse->id,
-                        'code' => $warehouse->code,
-                        'name' => $warehouse->name,
-                    ],
+                    'id' => $warehouse->id,
+                    'code' => $warehouse->code,
+                    'name' => $warehouse->name,
                 ],
             ]);
     }

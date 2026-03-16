@@ -173,15 +173,74 @@ npm run ios
 - Cambios destructivos sobre credenciales, warehouse context o auth sin validar impacto.
 - Reescrituras amplias si el pedido es puntual.
 
-## 16. Fuentes de verdad dentro del repo
+## 16. Backend Testing Best Practices
 
-- `flexxus-picking-backend/tests`: comportamiento esperado.
-- `flexxus-picking-backend/routes/api.php`: superficie API.
-- `flexxus-picking-backend/app/Services`: reglas de negocio.
-- `flexxus-picking-desktop/src/hooks` y `src/lib/query-config.ts`: contratos de datos en frontend.
-- `docs/`: decisiones y flujos operativos relevantes.
+### RefreshDatabase vs DatabaseMigrations
 
-## 17. Criterio para respuestas del agente
+**Use `RefreshDatabase`** for:
+- Most unit and feature tests that don't test transaction behavior
+- Tests that require fast execution (RefreshDatabase uses transaction rollback)
+- Tests that don't use encrypted model casts
+
+**Use `DatabaseMigrations`** for:
+- Tests that verify transaction nesting behavior (DB::transactionLevel() assertions)
+- Tests that interact with encrypted model attributes (Warehouse credentials, etc.)
+- Tests that encounter "There is already an active transaction" errors
+- Tests that need to verify transaction rollback behavior
+
+**Why**: RefreshDatabase wraps the entire test in a transaction, which:
+- Conflicts with tests that verify their own transaction levels
+- Causes issues with Laravel's encrypted casts when models are created/accessed within the wrapper
+- Prevents accurate testing of nested transaction behavior
+
+DatabaseMigrations is slower but provides a clean database state without transaction wrapper interference.
+
+**Example**:
+```php
+// ❌ Wrong - causes "already active transaction" with encrypted casts
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+// ✅ Correct - no transaction conflicts
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+```
+
+### Encrypted Model Casts in Tests
+
+**Always use Eloquent models** when testing encrypted attributes:
+```php
+// ❌ Wrong - bypasses encryption/decryption
+$warehouse = DB::table('warehouses')->where('code', '001')->first();
+$this->assertEquals('SECRET', $warehouse->flexxus_username); // FAILS
+
+// ✅ Correct - uses encrypted cast
+$warehouse = Warehouse::where('code', '001')->first();
+$this->assertEquals('SECRET', $warehouse->flexxus_username); // PASSES
+```
+
+### Service Mocking
+
+**Mock interfaces, not concrete classes**:
+```php
+// ❌ Wrong - mocking concrete class with constructor dependencies
+$mockFlexxus = $this->createMock(FlexxusPickingService::class);
+
+// ✅ Correct - mocking the actual interface
+$mockProductService = $this->createMock(FlexxusProductServiceInterface::class);
+```
+
+### Test Data Isolation
+
+Each test method should create fresh data:
+```php
+public function test_something(): void
+{
+    // Create unique data for this test
+    $warehouse = Warehouse::factory()->create(['code' => 'WH_TEST_'.uniqid()]);
+    // ...test code...
+}
+```
+
+## 17. Fuentes de verdad dentro del repo
 
 Al cerrar una tarea, informar de forma breve:
 

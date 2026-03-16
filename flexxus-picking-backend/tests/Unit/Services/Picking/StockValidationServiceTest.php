@@ -111,11 +111,11 @@ class StockValidationServiceTest extends TestCase
             'quantity_picked' => 0,
         ]);
 
-        // Mock FlexxusPickingService to return insufficient stock (3 available, 5 requested)
-        $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
+        // Mock FlexxusProductServiceInterface to return insufficient stock (3 available, 5 requested)
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
         $mockAlert = $this->createMock(AlertServiceInterface::class);
 
-        $mockFlexxus->method('getProductStock')
+        $mockProductService->method('getProductStock')
             ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
@@ -124,7 +124,7 @@ class StockValidationServiceTest extends TestCase
             ]);
 
         // Re-create the validation service with the mocked dependencies
-        $this->validationService = new \App\Services\Picking\StockValidationService($mockFlexxus, $mockAlert);
+        $this->validationService = new \App\Services\Picking\StockValidationService($mockProductService, $mockAlert);
 
         // Act & Assert - should throw PhysicalStockInsufficientException
         $this->expectException(PhysicalStockInsufficientException::class);
@@ -151,13 +151,10 @@ class StockValidationServiceTest extends TestCase
             'quantity_picked' => 0,
         ]);
 
-        // Mock FlexxusPickingService to return sufficient stock
-        $this->instance(
-            \App\Services\Picking\FlexxusPickingService::class,
-            $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class)
-        );
+        // Mock FlexxusProductServiceInterface to return sufficient stock
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
 
-        $mockFlexxus->method('getProductStock')
+        $mockProductService->method('getProductStock')
             ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
@@ -166,7 +163,7 @@ class StockValidationServiceTest extends TestCase
             ]);
 
         // Re-create the validation service with the mocked dependency
-        $this->validationService = new \App\Services\Picking\StockValidationService($mockFlexxus, $this->createMock(AlertServiceInterface::class));
+        $this->validationService = new \App\Services\Picking\StockValidationService($mockProductService, $this->createMock(AlertServiceInterface::class));
 
         // Act
         $validation = $this->validationService->validateStockForPick(
@@ -256,10 +253,10 @@ class StockValidationServiceTest extends TestCase
             'quantity_picked' => 0,
         ]);
 
-        // Mock FlexxusPickingService to return insufficient stock
-        $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
+        // Mock FlexxusProductServiceInterface to return insufficient stock
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
 
-        $mockFlexxus->method('getProductStock')
+        $mockProductService->method('getProductStock')
             ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
@@ -271,7 +268,7 @@ class StockValidationServiceTest extends TestCase
         $realAlertService = $this->app->make(AlertServiceInterface::class);
 
         // Re-create the validation service with the mocked Flexxus but real AlertService
-        $this->validationService = new \App\Services\Picking\StockValidationService($mockFlexxus, $realAlertService);
+        $this->validationService = new \App\Services\Picking\StockValidationService($mockProductService, $realAlertService);
 
         // Act & Assert
         $this->expectException(PhysicalStockInsufficientException::class);
@@ -344,10 +341,10 @@ class StockValidationServiceTest extends TestCase
             'quantity_picked' => 0,
         ]);
 
-        // Mock FlexxusPickingService to return sufficient stock
-        $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
+        // Mock FlexxusProductServiceInterface to return sufficient stock
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
 
-        $mockFlexxus->method('getProductStock')
+        $mockProductService->method('getProductStock')
             ->with($itemCode, $this->callback(fn ($wh) => $wh instanceof \App\Models\Warehouse && $wh->id === $this->warehouse->id))
             ->willReturn([
                 'warehouse' => $this->warehouse->code,
@@ -359,7 +356,7 @@ class StockValidationServiceTest extends TestCase
         $realAlertService = $this->app->make(AlertServiceInterface::class);
 
         // Re-create the validation service with the mocked Flexxus but real AlertService
-        $this->validationService = new \App\Services\Picking\StockValidationService($mockFlexxus, $realAlertService);
+        $this->validationService = new \App\Services\Picking\StockValidationService($mockProductService, $realAlertService);
 
         // Act
         $validation = $this->validationService->validateStockForPick(
@@ -400,8 +397,8 @@ class StockValidationServiceTest extends TestCase
             'quantity_picked' => 0,
         ]);
 
-        $mockFlexxus = $this->createMock(\App\Services\Picking\FlexxusPickingService::class);
-        $mockFlexxus->method('getProductStock')
+        $mockProductService = $this->createMock(\App\Services\Picking\Interfaces\FlexxusProductServiceInterface::class);
+        $mockProductService->method('getProductStock')
             ->with(
                 $itemCode,
                 $this->callback(function ($warehouse) {
@@ -416,7 +413,7 @@ class StockValidationServiceTest extends TestCase
             ]);
 
         $mockAlert = $this->createMock(AlertServiceInterface::class);
-        $this->validationService = new \App\Services\Picking\StockValidationService($mockFlexxus, $mockAlert);
+        $this->validationService = new \App\Services\Picking\StockValidationService($mockProductService, $mockAlert);
 
         // Act - should not throw exception
         $validation = $this->validationService->validateStockForPick(

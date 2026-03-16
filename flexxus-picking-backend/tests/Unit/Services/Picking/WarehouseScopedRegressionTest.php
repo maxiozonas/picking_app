@@ -32,6 +32,10 @@ class WarehouseScopedRegressionTest extends TestCase
 
     private PickingService $pickingService;
 
+    private array $requestContext1;
+
+    private array $requestContext2;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -57,6 +61,9 @@ class WarehouseScopedRegressionTest extends TestCase
             'warehouse_id' => $this->warehouse2->id,
             'name' => 'User 2 - CENTRO',
         ]);
+
+        $this->requestContext1 = $this->getRequestContext($this->warehouse1->id, $this->user1->id);
+        $this->requestContext2 = $this->getRequestContext($this->warehouse2->id, $this->user2->id);
 
         $this->pickingService = $this->app->make(PickingService::class);
     }
@@ -96,7 +103,8 @@ class WarehouseScopedRegressionTest extends TestCase
             'NP 10001',
             'PROD-001',
             5,
-            $this->user2->id // Wrong user from different warehouse
+            $this->user2->id, // Wrong user from different warehouse
+            $this->requestContext2
         );
     }
 
@@ -134,7 +142,8 @@ class WarehouseScopedRegressionTest extends TestCase
 
         $this->pickingService->completeOrder(
             'NP 10002',
-            $this->user2->id // Wrong user from different warehouse
+            $this->user2->id, // Wrong user from different warehouse
+            $this->requestContext2
         );
     }
 
@@ -192,7 +201,8 @@ class WarehouseScopedRegressionTest extends TestCase
         // Act: User2 tries to get order detail for warehouse1 order
         $result = $this->pickingService->getOrderDetail(
             'NP 10003',
-            $this->user2->id // Wrong user from different warehouse
+            $this->user2->id, // Wrong user from different warehouse
+            $this->requestContext2
         );
 
         // Assert: Progress should be null (user cannot see other warehouse orders)
@@ -271,7 +281,8 @@ class WarehouseScopedRegressionTest extends TestCase
 
         $this->pickingService->startOrder(
             'NP 10004',
-            $this->user2->id
+            $this->user2->id,
+            $this->requestContext2
         );
     }
 
@@ -305,7 +316,7 @@ class WarehouseScopedRegressionTest extends TestCase
             'product_code' => 'PROD-001',
             'message' => 'Stock issue in warehouse1',
             'severity' => 'high',
-        ], $this->user1->id);
+        ], $this->user1->id, $this->requestContext1);
 
         // Assert: Alert is scoped to warehouse1
         $this->assertEquals($this->warehouse1->id, $alert1->warehouse_id);
@@ -318,7 +329,7 @@ class WarehouseScopedRegressionTest extends TestCase
             'product_code' => 'PROD-002',
             'message' => 'Stock issue in warehouse2',
             'severity' => 'high',
-        ], $this->user2->id);
+        ], $this->user2->id, $this->requestContext2);
 
         // Assert: Alert is scoped to warehouse2
         $this->assertEquals($this->warehouse2->id, $alert2->warehouse_id);

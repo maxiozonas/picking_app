@@ -6,14 +6,14 @@ use App\Models\PickingAlert;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\PickingServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class MobilePickingContractTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_orders_index_forwards_mobile_pagination_and_search_filters(): void
     {

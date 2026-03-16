@@ -6,7 +6,7 @@ use App\Http\Clients\Flexxus\FlexxusClient;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
@@ -19,7 +19,7 @@ use Tests\TestCase;
  */
 class WarehouseCredentialIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function setUp(): void
     {
