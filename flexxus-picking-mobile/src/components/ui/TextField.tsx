@@ -18,7 +18,7 @@ export const TextField = forwardRef<TextInput, Props>(function TextField({ label
         ref={ref}
         multiline={multiline}
         placeholderTextColor={colors.textMuted}
-        style={[styles.input, multiline ? styles.inputMultiline : null, style]}
+        style={[styles.input, multiline ? styles.inputMultiline : null, error ? styles.inputError : null, style]}
         textAlignVertical={multiline ? 'top' : 'center'}
         {...props}
       />
@@ -36,14 +36,14 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
     fontFamily: theme.typography.fontFamily.display,
     fontSize: theme.typography.fontSize.sm,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   input: {
-    minHeight: 54,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    minHeight: 52,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.lg,
     borderWidth: 1,
     color: colors.text,
     fontFamily: theme.typography.fontFamily.body,
@@ -51,9 +51,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   inputMultiline: {
-    minHeight: 120,
+    minHeight: 128,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
+  },
+  inputError: {
+    borderColor: colors.danger,
   },
   helper: {
     color: colors.textMuted,
@@ -65,5 +68,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontFamily: theme.typography.fontFamily.body,
     fontSize: theme.typography.fontSize.sm,
+    lineHeight: 18,
   },
 })

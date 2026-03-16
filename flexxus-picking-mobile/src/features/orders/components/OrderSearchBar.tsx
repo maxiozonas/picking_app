@@ -25,13 +25,13 @@ export function OrderSearchBar({ value, onChange, resultsLabel, isSearching }: O
         autoCorrect={false}
         label="Pedido o cliente"
         onChangeText={onChange}
-        placeholder="NP 623200 o cliente"
+        placeholder="Buscar pedido"
         returnKeyType="search"
         value={value}
       />
 
       <View style={styles.footerRow}>
-        <Text style={styles.hint}>La busqueda se aplica al deposito asignado y reinicia la lista.</Text>
+        <View style={styles.divider} />
         {hasValue ? (
           <Pressable onPress={() => onChange('')} style={({ pressed }) => [styles.clearButton, pressed ? styles.clearButtonPressed : null]}>
             <Text style={styles.clearButtonLabel}>Limpiar</Text>
@@ -45,7 +45,7 @@ export function OrderSearchBar({ value, onChange, resultsLabel, isSearching }: O
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.sm,
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
+    fontFamily: theme.typography.fontFamily.mono,
     fontSize: theme.typography.fontSize.sm,
   },
   footerRow: {
@@ -75,15 +75,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-  hint: {
-    color: colors.textMuted,
+  divider: {
     flex: 1,
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.sm,
-    lineHeight: 20,
+    height: 1,
+    backgroundColor: 'rgba(130, 136, 153, 0.12)',
   },
   clearButton: {
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     minHeight: 40,
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
     fontSize: theme.typography.fontSize.sm,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
 })

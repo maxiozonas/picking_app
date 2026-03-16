@@ -46,6 +46,7 @@ export function PickItemCard({ item, orderNumber, validation, onPick, onReportAl
     <View style={[styles.card, item.status === 'completed' ? styles.cardCompleted : null]}>
       <View style={styles.topRow}>
         <View style={styles.identityBlock}>
+          <Text style={styles.kicker}>SKU</Text>
           <Text style={styles.productCode}>{item.productCode}</Text>
           <Text style={styles.description}>{item.description || 'Descripcion sin detalle'}</Text>
         </View>
@@ -54,7 +55,7 @@ export function PickItemCard({ item, orderNumber, validation, onPick, onReportAl
 
       <View style={styles.progressStrip}>
         <Text style={styles.progressValue}>{item.quantityPicked}/{item.quantityRequired}</Text>
-        <Text style={styles.progressHint}>{remaining > 0 ? `${remaining} pendientes` : 'Listo para cerrar pedido'}</Text>
+        <Text style={styles.progressHint}>{remaining > 0 ? `${remaining} pendientes` : 'Completo'}</Text>
       </View>
 
       <View style={styles.metaRow}>
@@ -111,7 +112,7 @@ export function PickItemCard({ item, orderNumber, validation, onPick, onReportAl
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.md,
@@ -130,6 +131,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
+  kicker: {
+    color: colors.accent,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xs,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
   productCode: {
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
@@ -141,7 +149,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.md,
   },
   progressStrip: {
-    backgroundColor: colors.bgMuted,
+    backgroundColor: colors.surfaceInset,
     borderRadius: radius.md,
     gap: spacing.xs,
     padding: spacing.md,
@@ -174,8 +182,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   presetButton: {
-    backgroundColor: colors.bgMuted,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     minHeight: 40,
@@ -200,7 +208,8 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   linkButton: {
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     minHeight: 40,
@@ -223,7 +232,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   stockErrorBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    backgroundColor: colors.dangerSoft,
     borderColor: 'rgba(239, 68, 68, 0.25)',
     borderRadius: radius.md,
     borderWidth: 1,

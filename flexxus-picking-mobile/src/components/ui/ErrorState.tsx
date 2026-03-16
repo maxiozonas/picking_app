@@ -15,7 +15,7 @@ export function ErrorState({ title, message, actionLabel, onAction }: { title: s
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceInset,
     borderColor: colors.danger,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   message: {
     color: colors.textMuted,
     fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
-    lineHeight: 22,
+    fontSize: theme.typography.fontSize.sm,
+    lineHeight: 20,
   },
 })

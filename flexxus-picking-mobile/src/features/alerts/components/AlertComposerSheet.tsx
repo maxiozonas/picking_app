@@ -124,7 +124,6 @@ export function AlertComposerSheet({
               <View style={styles.headerCopy}>
                 <Text style={styles.eyebrow}>Incidencia</Text>
                 <Text style={styles.title}>Nueva alerta operativa</Text>
-                <Text style={styles.subtitle}>Se envia sin salir del pedido y queda visible al instante para seguimiento.</Text>
               </View>
               <Pressable onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed ? styles.closeButtonPressed : null]}>
                 <Text style={styles.closeButtonLabel}>Cerrar</Text>
@@ -135,11 +134,6 @@ export function AlertComposerSheet({
               <View style={styles.contextCard}>
                 <Text style={styles.contextLabel}>Pedido activo</Text>
                 <Text style={styles.contextValue}>{formatOrderCode(undefined, orderNumber)}</Text>
-                <Text style={styles.contextHint}>
-                  {selectedProductCode
-                    ? `Abriste la alerta desde ${selectedProductCode}. Puedes cambiarla o reportarla a nivel pedido.`
-                    : 'Usa producto opcional solo si la incidencia pertenece a una posicion puntual.'}
-                </Text>
               </View>
 
               <View style={styles.group}>
@@ -214,7 +208,6 @@ export function AlertComposerSheet({
                 <TextField
                   autoCapitalize="characters"
                   error={productCodeError}
-                  helperText="Completa este campo solo si la alerta aplica a un SKU puntual."
                   label="Codigo de producto"
                   onChangeText={setProductCode}
                   placeholder="Ej: SKU-123"
@@ -224,7 +217,6 @@ export function AlertComposerSheet({
 
               <TextField
                 error={messageError}
-                helperText="Explica que viste, que cantidad falta o que bloqueo encontraste."
                 label="Mensaje para administracion"
                 multiline
                 numberOfLines={5}
@@ -315,7 +307,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   closeButton: {
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     minHeight: 38,
@@ -337,7 +329,7 @@ const styles = StyleSheet.create({
   },
   contextCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.xs,
@@ -354,12 +346,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.mono,
     fontSize: theme.typography.fontSize.lg,
   },
-  contextHint: {
-    color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.sm,
-    lineHeight: 20,
-  },
   group: {
     gap: spacing.sm,
   },
@@ -372,8 +358,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   optionCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
@@ -409,8 +395,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   productChip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     minHeight: 42,

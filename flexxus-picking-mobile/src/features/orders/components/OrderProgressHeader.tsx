@@ -28,6 +28,7 @@ export function OrderProgressHeader({ detail }: { detail: OrderDetail }) {
     <View style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.identityBlock}>
+          <Text style={styles.kicker}>{formatWarehouseLabel(detail.warehouse)}</Text>
           <Text style={styles.orderCode}>{formatOrderCode(detail.orderType, detail.orderNumber)}</Text>
           <Text numberOfLines={2} style={styles.customer}>
             {detail.customerName || 'Cliente no informado'}
@@ -36,16 +37,18 @@ export function OrderProgressHeader({ detail }: { detail: OrderDetail }) {
         <StatusChip label={statusMeta.label} tone={statusMeta.tone} />
       </View>
 
-      <View style={styles.progressPanel}>
-        <Text style={styles.progressValue}>{formatPercentage(detail.completedPercentage)}</Text>
-        <Text style={styles.progressLabel}>{detail.pickedItems}/{detail.totalItems} items completos</Text>
+      <View style={styles.progressRow}>
+        <View style={styles.progressPanel}>
+          <Text style={styles.progressValue}>{formatPercentage(detail.completedPercentage)}</Text>
+          <Text style={styles.progressLabel}>{detail.pickedItems}/{detail.totalItems} items</Text>
+        </View>
+        <View style={styles.totalPanel}>
+          <Text style={styles.totalKicker}>Total</Text>
+          <Text style={styles.totalValue}>{formatCurrency(detail.total)}</Text>
+        </View>
       </View>
 
       <View style={styles.metaGrid}>
-        <View style={styles.metaCell}>
-          <Text style={styles.metaKicker}>Deposito</Text>
-          <Text style={styles.metaValue}>{formatWarehouseLabel(detail.warehouse)}</Text>
-        </View>
         <View style={styles.metaCell}>
           <Text style={styles.metaKicker}>Asignado</Text>
           <Text style={styles.metaValue}>{detail.assignedTo.name || 'Sin tomar'}</Text>
@@ -53,10 +56,6 @@ export function OrderProgressHeader({ detail }: { detail: OrderDetail }) {
         <View style={styles.metaCell}>
           <Text style={styles.metaKicker}>Iniciado</Text>
           <Text style={styles.metaValue}>{formatDateTime(detail.startedAt)}</Text>
-        </View>
-        <View style={styles.metaCell}>
-          <Text style={styles.metaKicker}>Total</Text>
-          <Text style={styles.metaValue}>{formatCurrency(detail.total)}</Text>
         </View>
       </View>
     </View>
@@ -66,11 +65,12 @@ export function OrderProgressHeader({ detail }: { detail: OrderDetail }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.lg,
+    ...theme.shadows.card,
   },
   topRow: {
     alignItems: 'flex-start',
@@ -82,6 +82,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
+  kicker: {
+    color: colors.accent,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xs,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
   orderCode: {
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
@@ -92,11 +99,16 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.body,
     fontSize: theme.typography.fontSize.md,
   },
+  progressRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   progressPanel: {
-    backgroundColor: colors.bgMuted,
+    backgroundColor: colors.surfaceInset,
     borderRadius: radius.md,
     gap: spacing.xs,
     padding: spacing.md,
+    flex: 1,
   },
   progressValue: {
     color: colors.text,
@@ -105,8 +117,30 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     color: colors.textSoft,
-    fontFamily: theme.typography.fontFamily.body,
+    fontFamily: theme.typography.fontFamily.mono,
     fontSize: theme.typography.fontSize.sm,
+  },
+  totalPanel: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentMuted,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+    justifyContent: 'center',
+    minWidth: 108,
+    padding: spacing.md,
+  },
+  totalKicker: {
+    color: colors.textSoft,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xs,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  totalValue: {
+    color: colors.white,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xl,
   },
   metaGrid: {
     flexDirection: 'row',
@@ -114,7 +148,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   metaCell: {
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surfaceInset,
     borderRadius: radius.md,
     gap: spacing.xs,
     minWidth: '48%',

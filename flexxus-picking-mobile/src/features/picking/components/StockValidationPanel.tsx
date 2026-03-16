@@ -21,7 +21,7 @@ export function StockValidationPanel({ stockInfo, validation }: StockValidationP
   return (
     <View style={styles.panel}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Contexto de stock</Text>
+        <Text style={styles.title}>Stock</Text>
         {validation ? (
           <StatusChip label={validation.validated ? 'Validado' : 'Bloqueado'} tone={validation.validated ? 'success' : 'danger'} />
         ) : null}
@@ -29,7 +29,7 @@ export function StockValidationPanel({ stockInfo, validation }: StockValidationP
 
       {stockInfo ? (
         <View style={styles.block}>
-          <Text style={styles.kicker}>Informacion</Text>
+          <Text style={styles.kicker}>Disponible</Text>
           <Text style={styles.value}>Disponible: {stockInfo.availableQuantity}</Text>
           <Text style={styles.meta}>Ubicacion: {stockInfo.location || 'Sin ubicacion informada'}</Text>
           {stockInfo.warehouseName ? (
@@ -41,8 +41,8 @@ export function StockValidationPanel({ stockInfo, validation }: StockValidationP
 
       {validation ? (
         <View style={[styles.block, validation.validated ? styles.validationOk : styles.validationError]}>
-          <Text style={styles.kicker}>Ultima validacion</Text>
-          <Text style={styles.value}>{validation.validated ? 'La ultima validacion permite continuar.' : 'La ultima validacion marco un bloqueo.'}</Text>
+          <Text style={styles.kicker}>Validacion</Text>
+          <Text style={styles.value}>{validation.validated ? 'Validado para continuar' : 'Bloqueado'}</Text>
           <Text style={styles.meta}>Solicitado: {validation.requestedQty} | Disponible: {validation.availableQty}</Text>
           <Text style={styles.meta}>Momento: {formatDateTime(validation.validatedAt)}</Text>
           {validation.errorCode ? <Text style={styles.meta}>Codigo: {validation.errorCode}</Text> : null}
@@ -54,8 +54,8 @@ export function StockValidationPanel({ stockInfo, validation }: StockValidationP
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: colors.bgMuted,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.sm,
@@ -78,10 +78,10 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   validationOk: {
-    backgroundColor: 'rgba(63, 175, 114, 0.12)',
+    backgroundColor: colors.successSoft,
   },
   validationError: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: colors.dangerSoft,
   },
   kicker: {
     color: colors.textMuted,

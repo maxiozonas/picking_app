@@ -13,8 +13,8 @@ export function EmptyState({ title, message }: { title: string; message: string 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceInset,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.sm,
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   message: {
     color: colors.textMuted,
     fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
-    lineHeight: 22,
+    fontSize: theme.typography.fontSize.sm,
+    lineHeight: 20,
   },
 })

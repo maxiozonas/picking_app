@@ -6,10 +6,10 @@ type StatusTone = 'neutral' | 'pending' | 'progress' | 'success' | 'warning' | '
 
 const toneMap: Record<StatusTone, { backgroundColor: string; color: string }> = {
   neutral: { backgroundColor: colors.surfaceStrong, color: colors.textSoft },
-  pending: { backgroundColor: colors.surfaceStrong, color: colors.text },
-  progress: { backgroundColor: colors.info, color: colors.bg },
-  success: { backgroundColor: colors.success, color: colors.bg },
-  warning: { backgroundColor: colors.warning, color: colors.bg },
+  pending: { backgroundColor: colors.surfaceElevated, color: colors.text },
+  progress: { backgroundColor: colors.infoSoft, color: colors.info },
+  success: { backgroundColor: colors.successSoft, color: colors.success },
+  warning: { backgroundColor: colors.warningSoft, color: colors.warning },
   danger: { backgroundColor: colors.danger, color: colors.white },
 }
 
@@ -28,12 +28,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 6,
   },
   label: {
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.sm,
-    letterSpacing: 0.8,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xs,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
 })

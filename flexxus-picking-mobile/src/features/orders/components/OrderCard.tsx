@@ -34,6 +34,7 @@ function OrderCardComponent({ order, onPress }: OrderCardProps) {
     <Pressable onPress={() => onPress(order)} style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}>
       <View style={styles.topRow}>
         <View style={styles.identityBlock}>
+          <Text style={styles.kicker}>{order.startedAt ? 'Activo' : 'Cola'}</Text>
           <Text style={styles.orderCode}>{formatOrderCode(order.orderType, order.orderNumber)}</Text>
           <Text numberOfLines={1} style={styles.customer}>
             {order.customer || 'Cliente no informado'}
@@ -44,12 +45,12 @@ function OrderCardComponent({ order, onPress }: OrderCardProps) {
 
       <View style={styles.progressBand}>
         <Text style={styles.progressLabel}>{formatPendingProgress(order.itemsPicked, order.itemsCount)}</Text>
-        <Text style={styles.progressHint}>{order.assignedTo.name ? `Tomado por ${order.assignedTo.name}` : 'Disponible para iniciar'}</Text>
+        <Text style={styles.progressHint}>{order.assignedTo.name ? order.assignedTo.name : 'Sin asignar'}</Text>
       </View>
 
       <View style={styles.bottomRow}>
         <Text style={styles.metaLabel}>{formatWarehouseLabel(order.warehouse)}</Text>
-        <Text style={styles.metaLabel}>{order.startedAt ? 'Retomar pedido' : 'Abrir detalle'}</Text>
+        <Text style={styles.actionLabel}>{order.startedAt ? 'Retomar' : 'Abrir'}</Text>
       </View>
     </Pressable>
   )
@@ -60,12 +61,13 @@ export const OrderCard = memo(OrderCardComponent)
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
     borderWidth: 1,
     gap: spacing.md,
     overflow: 'hidden',
     padding: spacing.lg,
+    ...theme.shadows.card,
   },
   cardPressed: {
     backgroundColor: colors.surfaceElevated,
@@ -81,6 +83,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
+  kicker: {
+    color: colors.accent,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.xs,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
   orderCode: {
     color: colors.text,
     fontFamily: theme.typography.fontFamily.mono,
@@ -92,7 +101,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.md,
   },
   progressBand: {
-    backgroundColor: colors.bgMuted,
+    backgroundColor: colors.surfaceInset,
     borderRadius: radius.md,
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
@@ -101,11 +110,11 @@ const styles = StyleSheet.create({
   progressLabel: {
     color: colors.text,
     fontFamily: theme.typography.fontFamily.display,
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.xl,
   },
   progressHint: {
-    color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
+    color: colors.textSoft,
+    fontFamily: theme.typography.fontFamily.mono,
     fontSize: theme.typography.fontSize.sm,
   },
   bottomRow: {
@@ -119,5 +128,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: theme.typography.fontFamily.body,
     fontSize: theme.typography.fontSize.sm,
+  },
+  actionLabel: {
+    color: colors.accent,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.sm,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 })

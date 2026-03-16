@@ -20,7 +20,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textMuted,
-    fontFamily: theme.typography.fontFamily.body,
-    fontSize: theme.typography.fontSize.md,
+    fontFamily: theme.typography.fontFamily.display,
+    fontSize: theme.typography.fontSize.sm,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 })
