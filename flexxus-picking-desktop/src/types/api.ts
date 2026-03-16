@@ -25,13 +25,14 @@ export interface PickingOrder {
   warehouse_id?: number
   warehouse?: Warehouse
   status: OrderStatus
-  // Backend returns assigned_to instead of user
   assigned_to?: { id: number; name: string } | null
+  delivery_type?: string | null
   items_count?: number
   items_picked?: number
-  started_at?: string
-  completed_at?: string
-  created_at: string
+  created_at?: string | null
+  flexxus_created_at?: string | null
+  started_at?: string | null
+  completed_at?: string | null
 }
 
 export type OrderStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'has_issues'

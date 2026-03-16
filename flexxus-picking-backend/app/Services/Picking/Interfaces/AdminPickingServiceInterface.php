@@ -2,6 +2,7 @@
 
 namespace App\Services\Picking\Interfaces;
 
+use App\Models\PickingOrderProgress;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface AdminPickingServiceInterface
@@ -11,7 +12,7 @@ interface AdminPickingServiceInterface
      *
      * @param  array  $filters  {
      *
-     * @type int $warehouse_id REQUIRED Filter by warehouse ID
+     * @type int|null $warehouse_id Optional warehouse ID filter
      * @type string|null $date_from Start date (Y-m-d)
      * @type string|null $date_to End date (Y-m-d)
      * @type string|null $search Search in order_number or customer
@@ -29,7 +30,7 @@ interface AdminPickingServiceInterface
      *
      * @param  array  $filters  {
      *
-     * @type int $warehouse_id REQUIRED Warehouse to refresh
+     * @type int|null $warehouse_id Optional warehouse to refresh
      * @type string|null $date_from Date to refresh
      *                   }
      *
@@ -60,6 +61,11 @@ interface AdminPickingServiceInterface
      * Returns null if not found in any active warehouse.
      */
     public function getPendingOrderDetail(string $orderNumber): ?array;
+
+    /**
+     * Get normalized admin detail data, optionally merging local progress.
+     */
+    public function getOrderDetailData(string $orderNumber, ?PickingOrderProgress $progress = null): ?array;
 
     /**
      * Get unique product codes from pending Flexxus orders.

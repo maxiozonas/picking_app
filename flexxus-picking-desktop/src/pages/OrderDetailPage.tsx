@@ -70,7 +70,8 @@ export function OrderDetailPage() {
         customer={order.customer ?? ''}
         warehouseName={order.warehouse?.name || `Depósito ${order.warehouse_id}`}
         status={order.status}
-        createdAt={order.created_at}
+        deliveryType={order.delivery_type}
+        flexxusCreatedAt={order.flexxus_created_at}
         startedAt={order.started_at}
         completedAt={order.completed_at}
         totalItems={order.total_items ?? order.items?.length ?? 0}

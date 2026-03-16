@@ -1,15 +1,16 @@
 import { OrderStatusBadge } from './OrderStatusBadge'
 import { OrderStatus } from '@/types/api'
-import { Building2, Calendar, Clock, Package } from 'lucide-react'
+import { Building2, Calendar, Clock, Package, Truck } from 'lucide-react'
 
 interface OrderDetailHeaderProps {
   orderNumber: string
   customer: string
   warehouseName: string
   status: OrderStatus
-  createdAt: string
-  startedAt?: string
-  completedAt?: string
+  deliveryType?: string | null
+  flexxusCreatedAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
   totalItems?: number
   pickedItems?: number
   completedPercentage?: number
@@ -20,7 +21,8 @@ export function OrderDetailHeader({
   customer,
   warehouseName,
   status,
-  createdAt,
+  deliveryType,
+  flexxusCreatedAt,
   startedAt,
   completedAt,
   totalItems = 0,
@@ -54,10 +56,18 @@ export function OrderDetailHeader({
               <Building2 className="h-3.5 w-3.5" />
               {warehouseName}
             </span>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              Creado: {formatDate(createdAt)}
-            </span>
+            {deliveryType && (
+              <span className="flex items-center gap-1.5">
+                <Truck className="h-3.5 w-3.5" />
+                {deliveryType}
+              </span>
+            )}
+            {flexxusCreatedAt && (
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                Pedido Flexxus: {formatDate(flexxusCreatedAt)}
+              </span>
+            )}
           </div>
         </div>
 

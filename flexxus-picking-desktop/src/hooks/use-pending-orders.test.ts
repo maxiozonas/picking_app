@@ -13,6 +13,7 @@ vi.mock('@/contexts/WarehouseFilterContext')
 
 describe('usePendingOrders', () => {
   let queryClient: QueryClient
+  let selectedWarehouseId: number | null
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -22,13 +23,18 @@ describe('usePendingOrders', () => {
     })
 
     vi.clearAllMocks()
+    selectedWarehouseId = null
 
     // Default warehouse filter mock
     vi.mocked(useWarehouseFilterStore).mockImplementation((selector) => {
       const state = {
-        selectedWarehouseId: null,
-        setSelectedWarehouseId: vi.fn(),
-        clearFilter: vi.fn(),
+        selectedWarehouseId,
+        setSelectedWarehouseId: (id: number | null) => {
+          selectedWarehouseId = id
+        },
+        clearFilter: () => {
+          selectedWarehouseId = null
+        },
       }
       return selector(state)
     })
@@ -45,7 +51,9 @@ describe('usePendingOrders', () => {
           order_number: 'EXP-2026-001',
           customer: 'Cliente ABC',
           status: 'pending',
-          created_at: '2026-03-09T10:00:00Z',
+          delivery_type: 'EXPEDICION',
+          flexxus_created_at: '2026-03-09T10:00:00Z',
+          started_at: null,
         },
       ],
       meta: {
@@ -67,6 +75,11 @@ describe('usePendingOrders', () => {
 
     expect(api.get).toHaveBeenCalledWith('/admin/pending-orders?status=all&per_page=15&page=1')
     expect(result.current.data?.data).toHaveLength(1)
+    expect(result.current.data?.data[0]).toMatchObject({
+      delivery_type: 'EXPEDICION',
+      flexxus_created_at: '2026-03-09T10:00:00Z',
+      started_at: null,
+    })
   })
 
   it('should use keepPreviousData: data is undefined on cold cache, defined after fetch', async () => {
@@ -98,6 +111,59 @@ describe('usePendingOrders', () => {
     })
 
     expect(api.get).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes pending order scope when warehouse changes after the initial all-warehouse load', async () => {
+    vi.mocked(api.get).mockImplementation(async (url) => {
+      if (url.includes('warehouse_id=2')) {
+        return {
+          data: {
+            data: [
+              {
+                id: 2,
+                order_number: 'NP 623202',
+                customer: 'Cliente Filtrado',
+                status: 'pending',
+                warehouse: { id: 2, code: '002', name: 'Rondeau' },
+              },
+            ],
+            meta: { current_page: 1, last_page: 1, per_page: 15, total: 1 },
+          },
+        }
+      }
+
+      return {
+        data: {
+          data: [
+            {
+              id: 1,
+              order_number: 'NP 623201',
+              customer: 'Cliente General',
+              status: 'pending',
+              warehouse: { id: 1, code: '001', name: 'Don Bosco' },
+            },
+          ],
+          meta: { current_page: 1, last_page: 1, per_page: 15, total: 1 },
+        },
+      }
+    })
+
+    const { result, rerender } = renderHook(() => usePendingOrders(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.data?.data[0]?.warehouse?.id).toBe(1)
+    })
+
+    expect(api.get).toHaveBeenNthCalledWith(1, '/admin/pending-orders?status=all&per_page=15&page=1')
+
+    selectedWarehouseId = 2
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.data?.data[0]?.warehouse?.id).toBe(2)
+    })
+
+    expect(api.get).toHaveBeenNthCalledWith(2, '/admin/pending-orders?warehouse_id=2&status=all&per_page=15&page=1')
   })
 
   it('should use QueryCacheTime.PENDING_ORDERS for staleTime', async () => {

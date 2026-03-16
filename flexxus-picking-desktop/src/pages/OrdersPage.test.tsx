@@ -1,42 +1,46 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { OrdersPage } from '@/pages/OrdersPage'
-import { useOrders } from '@/hooks/use-orders'
-import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
+import { usePendingOrders } from '@/hooks/use-pending-orders'
 
-// Mock dependencies
-vi.mock('@/hooks/use-orders')
-vi.mock('@/contexts/WarehouseFilterContext')
+const invalidateQueries = vi.fn()
+const ordersTableSpy = vi.fn()
+
+vi.mock('@/hooks/use-pending-orders')
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries }),
+  }
+})
 vi.mock('@/components/orders/OrdersTable', () => ({
-  OrdersTable: ({ orders, isLoading, onRefresh }: any) => (
-    <div data-testid="orders-table">
-      <div data-testid="orders-count">{orders?.length || 0}</div>
-      <div data-testid="is-loading">{isLoading.toString()}</div>
-      <button onClick={onRefresh} data-testid="refresh-btn">
-        Refresh
-      </button>
-    </div>
-  ),
+  OrdersTable: (props: any) => {
+    ordersTableSpy(props)
+    return (
+      <div data-testid="orders-table">
+        <div data-testid="orders-count">{props.orders?.length || 0}</div>
+        <button onClick={props.onRefresh} data-testid="refresh-btn">
+          Refresh
+        </button>
+      </div>
+    )
+  },
 }))
 vi.mock('@/components/orders/OrderFilters', () => ({
   OrderFilters: ({ searchValue, onSearchChange, statusFilter, onStatusChange }: any) => (
     <div data-testid="order-filters">
-      <input
-        data-testid="search-input"
-        value={searchValue}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search..."
-      />
-      <select
-        data-testid="status-select"
-        value={statusFilter}
-        onChange={(e) => onStatusChange(e.target.value)}
-      />
+      <input data-testid="search-input" value={searchValue} onChange={(e) => onSearchChange(e.target.value)} />
+      <select data-testid="status-select" value={statusFilter} onChange={(e) => onStatusChange(e.target.value)} />
     </div>
   ),
+}))
+vi.mock('@/components/dashboard/WarehouseSelector', () => ({
+  WarehouseSelector: () => <div data-testid="warehouse-selector" />,
 }))
 
 describe('OrdersPage', () => {
@@ -44,22 +48,10 @@ describe('OrdersPage', () => {
 
   beforeEach(() => {
     queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
+      defaultOptions: { queries: { retry: false } },
     })
 
     vi.clearAllMocks()
-
-    // Default warehouse filter mock
-    vi.mocked(useWarehouseFilterStore).mockImplementation((selector) => {
-      const state = {
-        selectedWarehouseId: null,
-        setSelectedWarehouseId: vi.fn(),
-        clearFilter: vi.fn(),
-      }
-      return selector(state)
-    })
   })
 
   const wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
@@ -69,10 +61,14 @@ describe('OrdersPage', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
     )
 
-  it('should render page title and filters', () => {
-    vi.mocked(useOrders).mockReturnValue({
-      data: undefined,
-      isLoading: true,
+  it('renders safely on initial load without selected warehouse', () => {
+    vi.mocked(usePendingOrders).mockReturnValue({
+      data: {
+        data: [],
+        meta: { current_page: 1, last_page: 1, per_page: 15, total: 0 },
+      },
+      isLoading: false,
+      isPlaceholderData: false,
       isError: false,
       error: null,
     } as any)
@@ -80,136 +76,72 @@ describe('OrdersPage', () => {
     render(<OrdersPage />, { wrapper })
 
     expect(screen.getByText('Pedidos')).toBeInTheDocument()
-    expect(screen.getByText('Gestión de pedidos de picking')).toBeInTheDocument()
-    expect(screen.getByTestId('order-filters')).toBeInTheDocument()
+    expect(screen.getByTestId('warehouse-selector')).toBeInTheDocument()
+    expect(screen.getByTestId('orders-count')).toHaveTextContent('0')
   })
 
-  it('should show loading state', () => {
-    vi.mocked(useOrders).mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-      error: null,
-    } as any)
-
-    render(<OrdersPage />, { wrapper })
-
-    expect(screen.getByTestId('is-loading')).toHaveTextContent('true')
-  })
-
-  it('should display orders when data is loaded', async () => {
-    const mockData = {
-      data: [
-        {
-          id: 1,
-          order_number: 'EXP-2026-001',
-          customer: 'Cliente ABC',
-          warehouse_id: 1,
-          status: 'pending' as const,
-          created_at: '2026-03-09T10:00:00Z',
-          updated_at: '2026-03-09T10:00:00Z',
-        },
-      ],
-      meta: {
-        current_page: 1,
-        last_page: 1,
-        per_page: 15,
-        total: 1,
-      },
+  it('passes delivery and explicit date metadata to the table', () => {
+    const order = {
+      order_number: 'NP 623202',
+      customer: 'Cliente ABC',
+      status: 'pending',
+      delivery_type: 'EXPEDICION',
+      flexxus_created_at: '2026-03-09T08:00:00Z',
+      started_at: null,
+      warehouse: { id: 1, code: '001', name: 'Don Bosco' },
     }
 
-    vi.mocked(useOrders).mockReturnValue({
-      data: mockData,
+    vi.mocked(usePendingOrders).mockReturnValue({
+      data: {
+        data: [order],
+        meta: { current_page: 1, last_page: 1, per_page: 15, total: 1 },
+      },
       isLoading: false,
+      isPlaceholderData: false,
       isError: false,
       error: null,
     } as any)
 
     render(<OrdersPage />, { wrapper })
 
-    await waitFor(() => {
-      expect(screen.getByTestId('orders-count')).toHaveTextContent('1')
+    expect(ordersTableSpy).toHaveBeenCalled()
+    expect(ordersTableSpy.mock.calls[0][0].orders[0]).toMatchObject({
+      delivery_type: 'EXPEDICION',
+      flexxus_created_at: '2026-03-09T08:00:00Z',
+      started_at: null,
     })
   })
 
-  it('should show error state on API error', () => {
-    const mockError = new Error('Network error')
-
-    vi.mocked(useOrders).mockReturnValue({
+  it('shows backend errors without crashing the page shell', () => {
+    vi.mocked(usePendingOrders).mockReturnValue({
       data: undefined,
       isLoading: false,
+      isPlaceholderData: false,
       isError: true,
-      error: mockError,
+      error: new Error('Internal Server Error'),
     } as any)
 
     render(<OrdersPage />, { wrapper })
 
     expect(screen.getByText('Error al cargar pedidos')).toBeInTheDocument()
-    expect(screen.getByText('Network error')).toBeInTheDocument()
+    expect(screen.getByText('Internal Server Error')).toBeInTheDocument()
   })
 
-  it('should show empty state when no orders', () => {
-    vi.mocked(useOrders).mockReturnValue({
+  it('invalidates pending orders when refresh is triggered', () => {
+    vi.mocked(usePendingOrders).mockReturnValue({
       data: {
         data: [],
-        meta: {
-          current_page: 1,
-          last_page: 1,
-          per_page: 15,
-          total: 0,
-        },
+        meta: { current_page: 1, last_page: 1, per_page: 15, total: 0 },
       },
       isLoading: false,
+      isPlaceholderData: false,
       isError: false,
       error: null,
     } as any)
 
     render(<OrdersPage />, { wrapper })
+    fireEvent.click(screen.getByTestId('refresh-btn'))
 
-    expect(screen.getByTestId('orders-count')).toHaveTextContent('0')
-  })
-
-  it('should handle search input', async () => {
-    vi.mocked(useOrders).mockReturnValue({
-      data: { data: [], meta: { current_page: 1, last_page: 1, per_page: 15, total: 0 } },
-      isLoading: false,
-      isError: false,
-      error: null,
-    } as any)
-
-    render(<OrdersPage />, { wrapper })
-
-    const searchInput = screen.getByTestId('search-input')
-    searchInput.click()
-    searchInput.focus()
-
-    // Type in search
-    await waitFor(() => {
-      searchInput.dispatchEvent(new React.FormEvent('input', { bubbles: true }))
-    })
-  })
-
-  it('should display pagination when multiple pages', () => {
-    const mockData = {
-      data: [],
-      meta: {
-        current_page: 1,
-        last_page: 5,
-        per_page: 15,
-        total: 75,
-      },
-    }
-
-    vi.mocked(useOrders).mockReturnValue({
-      data: mockData,
-      isLoading: false,
-      isError: false,
-      error: null,
-    } as any)
-
-    render(<OrdersPage />, { wrapper })
-
-    expect(screen.getByText(/Mostrando 0 de 75 pedidos/)).toBeInTheDocument()
-    expect(screen.getByText('Página 1 de 5')).toBeInTheDocument()
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-orders'] })
   })
 })

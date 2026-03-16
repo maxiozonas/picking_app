@@ -62,11 +62,7 @@ class AdminOrdersController extends Controller
             ->with(['user', 'warehouse', 'items', 'alerts.reporter', 'alerts.warehouse', 'events.user'])
             ->first();
 
-        if ($order) {
-            return new AdminOrderDetailResource($order);
-        }
-
-        $flexxusDetail = $this->adminPickingService->getPendingOrderDetail($canonical);
+        $flexxusDetail = $this->adminPickingService->getOrderDetailData($canonical, $order);
 
         if ($flexxusDetail) {
             return new AdminOrderDetailResource((object) $flexxusDetail);

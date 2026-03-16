@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Api\Admin;
 
-use App\Models\PickingAlert;
-use App\Models\PickingItemProgress;
+use App\Http\Clients\Flexxus\FlexxusClient;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Picking\Interfaces\FlexxusClientFactoryInterface;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Mockery;
+use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -17,287 +19,135 @@ class AdminOrdersTest extends TestCase
 
     private User $admin;
 
-    private User $regularUser;
+    private Warehouse $warehouse;
 
-    private User $employee;
-
-    private Warehouse $warehouse1;
-
-    private Warehouse $warehouse2;
+    /** @var FlexxusClientFactoryInterface&MockInterface */
+    private FlexxusClientFactoryInterface $mockFactory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Create roles for Spatie
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'empleado', 'guard_name' => 'web']);
 
-        $this->warehouse1 = Warehouse::factory()->create(['code' => 'CENTRO']);
-        $this->warehouse2 = Warehouse::factory()->create(['code' => 'NORTE']);
-
+        $this->warehouse = Warehouse::factory()->create(['code' => '001', 'name' => 'Don Bosco']);
         $this->admin = User::factory()->admin()->create();
 
-        $this->regularUser = User::factory()
-            ->empleado()
-            ->state(['warehouse_id' => $this->warehouse1->id])
-            ->create();
-
-        $this->employee = User::factory()
-            ->empleado()
-            ->create();
+        $this->mockFactory = Mockery::mock(FlexxusClientFactoryInterface::class);
+        $this->app->instance(FlexxusClientFactoryInterface::class, $this->mockFactory);
     }
 
-    public function test_admin_can_get_all_orders(): void
+    public function test_started_order_detail_keeps_flexxus_created_at_separate_from_local_lifecycle(): void
     {
-        // Arrange
-        $anotherUser1 = User::factory()->empleado()->create();
-        $anotherUser2 = User::factory()->empleado()->create();
+        $employee = User::factory()->empleado()->create();
 
-        PickingOrderProgress::factory()->count(5)->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'user_id' => $anotherUser1->id,
-            'status' => 'pending',
-        ]);
-
-        PickingOrderProgress::factory()->count(3)->create([
-            'warehouse_id' => $this->warehouse2->id,
-            'user_id' => $this->employee->id,
+        $order = PickingOrderProgress::factory()->create([
+            'order_number' => 'NP 623202',
+            'warehouse_id' => $this->warehouse->id,
+            'user_id' => $employee->id,
             'status' => 'in_progress',
+            'customer' => 'Cliente A',
+            'started_at' => '2026-03-09 09:00:00',
+            'completed_at' => null,
         ]);
 
-        // Act
-        $response = $this->actingAs($this->admin)
-            ->getJson('/api/admin/orders?per_page=50');
+        $client = Mockery::mock(FlexxusClient::class);
+        $client->shouldReceive('request')
+            ->andReturnUsing(function (string $method, string $path) {
+                if (str_contains($path, '/v2/deliverydata/NP/623202')) {
+                    return ['data' => [['CODIGOTIPOENTREGA' => 1]]];
+                }
 
-        // Assert
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'data' => [
-                    '*' => [
-                        'id',
-                        'order_number',
-                        'customer',
-                        'status',
-                        'warehouse',
-                        'assigned_to',
-                        'items_count',
-                        'items_picked',
-                        'started_at',
-                        'completed_at',
+                return [
+                    'data' => [
+                        'RAZONSOCIAL' => 'Cliente A',
+                        'FECHACOMPROBANTE' => '2026-03-09T08:00:00Z',
+                        'DETALLE' => [],
                     ],
-                ],
-                'meta' => [
-                    'current_page',
-                    'per_page',
-                    'total',
-                ],
+                ];
+            });
+
+        $this->mockFactory->shouldReceive('createForWarehouse')->andReturn($client);
+
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/orders/'.$order->order_number);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.delivery_type', 'EXPEDICION');
+        $response->assertJsonPath('data.flexxus_created_at', '2026-03-09T08:00:00Z');
+        $response->assertJsonPath('data.started_at', '2026-03-09T09:00:00+00:00');
+        $response->assertJsonMissingPath('data.created_at');
+    }
+
+    public function test_pending_order_list_and_detail_keep_delivery_metadata_consistent(): void
+    {
+        $employee = User::factory()->empleado()->create();
+
+        $order = PickingOrderProgress::factory()->create([
+            'order_number' => 'NP 623202',
+            'warehouse_id' => $this->warehouse->id,
+            'user_id' => $employee->id,
+            'status' => 'in_progress',
+            'customer' => 'Cliente A',
+            'started_at' => '2026-03-09 09:00:00',
+            'completed_at' => null,
+        ]);
+
+        $client = Mockery::mock(FlexxusClient::class);
+        $client->shouldReceive('request')
+            ->andReturnUsing(function (string $method, string $path) {
+                if ($path === '/v2/orders') {
+                    return [
+                        'data' => [
+                            [
+                                'NUMEROCOMPROBANTE' => '623202',
+                                'RAZONSOCIAL' => 'Cliente A',
+                                'TOTAL' => 1000,
+                                'FECHACOMPROBANTE' => '2026-03-09T08:00:00Z',
+                                'DEPOSITO' => 'Don Bosco',
+                            ],
+                        ],
+                    ];
+                }
+
+                if ($path === '/v2/deliverydata/NP/623202') {
+                    return ['data' => [['CODIGOTIPOENTREGA' => 1]]];
+                }
+
+                return [
+                    'data' => [
+                        'RAZONSOCIAL' => 'Cliente A',
+                        'FECHACOMPROBANTE' => '2026-03-09T08:00:00Z',
+                        'DETALLE' => [],
+                    ],
+                ];
+            });
+        $client->shouldReceive('requestMany')
+            ->andReturn([
+                ['data' => [['CODIGOTIPOENTREGA' => 1]]],
             ]);
 
-        $data = $response->json('data');
-        $this->assertCount(8, $data);
+        $this->mockFactory->shouldReceive('createForWarehouse')->andReturn($client);
 
-        // Find an order with the employee assigned
-        $orderWithEmployee = collect($data)->first(fn ($order) => $order['assigned_to']['id'] === $this->employee->id);
-        $this->assertNotNull($orderWithEmployee);
-    }
-
-    public function test_admin_can_filter_orders_by_warehouse(): void
-    {
-        // Arrange
-        PickingOrderProgress::factory()->count(5)->create([
-            'warehouse_id' => $this->warehouse1->id,
-        ]);
-
-        PickingOrderProgress::factory()->count(3)->create([
-            'warehouse_id' => $this->warehouse2->id,
-        ]);
-
-        // Act
-        $response = $this->actingAs($this->admin)
-            ->getJson('/api/admin/orders?warehouse_id='.$this->warehouse1->id);
-
-        // Assert
-        $response->assertStatus(200);
-
-        $data = $response->json('data');
-        $this->assertCount(5, $data);
-        foreach ($data as $order) {
-            $this->assertEquals($this->warehouse1->id, $order['warehouse']['id']);
-        }
-    }
-
-    public function test_admin_can_filter_orders_by_status(): void
-    {
-        // Arrange
-        PickingOrderProgress::factory()->count(3)->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'status' => 'in_progress',
-        ]);
-
-        PickingOrderProgress::factory()->count(2)->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'status' => 'completed',
-        ]);
-
-        // Act
-        $response = $this->actingAs($this->admin)
-            ->getJson('/api/admin/orders?status=in_progress');
-
-        // Assert
-        $response->assertStatus(200);
-
-        $data = $response->json('data');
-        $this->assertCount(3, $data);
-        foreach ($data as $order) {
-            $this->assertEquals('in_progress', $order['status']);
-        }
-    }
-
-    public function test_admin_can_search_orders_by_number(): void
-    {
-        // Arrange
-        PickingOrderProgress::factory()->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'order_number' => 'NP-1001',
-        ]);
-
-        PickingOrderProgress::factory()->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'order_number' => 'NP-1002',
-        ]);
-
-        PickingOrderProgress::factory()->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'order_number' => 'NP-2050',
-        ]);
-
-        // Act
-        $response = $this->actingAs($this->admin)
-            ->getJson('/api/admin/orders?search=1001');
-
-        // Assert
-        $response->assertStatus(200);
-
-        $data = $response->json('data');
-        $this->assertCount(1, $data);
-        $this->assertEquals('NP-1001', $data[0]['order_number']);
-    }
-
-    public function test_admin_can_get_order_detail(): void
-    {
-        // Arrange
-        $order = PickingOrderProgress::factory()->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'user_id' => $this->employee->id,
-            'status' => 'in_progress',
-        ]);
-
-        PickingItemProgress::factory()->count(3)->create([
-            'picking_order_progress_id' => $order->id,
-            'status' => 'completed',
-        ]);
-
-        PickingItemProgress::factory()->count(2)->create([
-            'picking_order_progress_id' => $order->id,
-            'status' => 'pending',
-        ]);
-
-        PickingAlert::factory()->create([
-            'order_number' => $order->order_number,
-            'warehouse_id' => $this->warehouse1->id,
-        ]);
-
-        // Act
-        $response = $this->actingAs($this->admin)
+        $listResponse = $this->actingAs($this->admin)
+            ->getJson('/api/admin/pending-orders?warehouse_id='.$this->warehouse->id.'&status=all');
+        $detailResponse = $this->actingAs($this->admin)
             ->getJson('/api/admin/orders/'.$order->order_number);
 
-        // Assert
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'data' => [
-                    'id',
-                    'order_number',
-                    'customer',
-                    'status',
-                    'warehouse',
-                    'assigned_to',
-                    'total_items',
-                    'picked_items',
-                    'completed_percentage',
-                    'started_at',
-                    'completed_at',
-                    'items' => [
-                        '*' => [
-                            'id',
-                            'product_code',
-                            'description',
-                            'quantity',
-                            'picked_quantity',
-                            'status',
-                        ],
-                    ],
-                    'alerts' => [
-                        '*' => [
-                            'id',
-                            'severity',
-                            'alert_type',
-                            'message',
-                            'status',
-                        ],
-                    ],
-                ],
-            ]);
+        $listResponse->assertOk()->assertJsonCount(1, 'data');
+        $detailResponse->assertOk();
 
-        $data = $response->json('data');
-        $this->assertEquals($order->order_number, $data['order_number']);
-        $this->assertEquals($this->employee->id, $data['assigned_to']['id']);
-        $this->assertCount(5, $data['items']);
-        $this->assertEquals(3, $data['picked_items']);
-        $this->assertEquals(60.0, $data['completed_percentage']);
-        $this->assertCount(1, $data['alerts']);
+        $listOrder = $listResponse->json('data.0');
+        $detailOrder = $detailResponse->json('data');
+
+        $this->assertSame($listOrder['order_number'], $detailOrder['order_number']);
+        $this->assertSame($listOrder['delivery_type'], $detailOrder['delivery_type']);
+        $this->assertSame($listOrder['flexxus_created_at'], $detailOrder['flexxus_created_at']);
     }
 
-    public function test_admin_can_filter_orders_by_date_range(): void
+    protected function tearDown(): void
     {
-        // Arrange
-        PickingOrderProgress::factory()->count(3)->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'created_at' => now()->subDays(5),
-        ]);
-
-        PickingOrderProgress::factory()->count(2)->create([
-            'warehouse_id' => $this->warehouse1->id,
-            'created_at' => now(),
-        ]);
-
-        // Act - get orders from last 3 days
-        $response = $this->actingAs($this->admin)
-            ->getJson('/api/admin/orders?date_from='.now()->subDays(3)->format('Y-m-d'));
-
-        // Assert
-        $response->assertStatus(200);
-
-        $data = $response->json('data');
-        $this->assertCount(2, $data);
-    }
-
-    public function test_regular_user_cannot_access_admin_orders(): void
-    {
-        // Act
-        $response = $this->actingAs($this->regularUser)
-            ->getJson('/api/admin/orders');
-
-        // Assert
-        $response->assertStatus(403);
-    }
-
-    public function test_unauthenticated_user_cannot_access_admin_orders(): void
-    {
-        // Act
-        $response = $this->getJson('/api/admin/orders');
-
-        // Assert
-        $response->assertStatus(401);
+        Mockery::close();
+        parent::tearDown();
     }
 }

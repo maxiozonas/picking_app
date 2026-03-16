@@ -21,9 +21,13 @@ class FlexxusOrderService implements FlexxusOrderServiceInterface
         return $warehouse->id.'_'.trim($warehouse->code);
     }
 
-    public function getOrdersByDateAndWarehouse(string $date, Warehouse $warehouse): array
+    public function getOrdersByDateAndWarehouse(string $date, Warehouse $warehouse, bool $forceRefresh = false): array
     {
         $cacheKey = 'flexxus_orders_'.$date.'_'.$this->warehouseScope($warehouse);
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
 
         return Cache::remember($cacheKey, now()->addSeconds(config('picking.orders_cache_ttl', 300)), function () use ($date, $warehouse) {
             $client = $this->factory->createForWarehouse($warehouse);
@@ -67,11 +71,10 @@ class FlexxusOrderService implements FlexxusOrderServiceInterface
                     continue;
                 }
 
-                $deliveryInfo = ($deliveryResponses[$index]['data'][0] ?? []);
+                $deliveryMetadata = $this->mapDeliveryMetadata($deliveryResponses[$index]['data'][0] ?? null);
 
-                if (($deliveryInfo['CODIGOTIPOENTREGA'] ?? 0) == 1) {
-                    $order['delivery_info'] = $deliveryInfo;
-                    $order['delivery_type'] = 'EXPEDICION';
+                if (($deliveryMetadata['delivery_type'] ?? null) === 'EXPEDICION') {
+                    $order['delivery_type'] = $deliveryMetadata['delivery_type'];
                     $expeditionOrders[] = $order;
                 }
             }
@@ -91,5 +94,29 @@ class FlexxusOrderService implements FlexxusOrderServiceInterface
 
             return $response['data'] ?? [];
         });
+    }
+
+    public function getOrderDeliveryMetadata(string $orderNumber, Warehouse $warehouse): ?array
+    {
+        $normalizedOrderNumber = OrderNumberParser::extractNumeric(OrderNumberParser::normalize($orderNumber));
+        $cacheKey = 'flexxus_order_delivery_'.$normalizedOrderNumber.'_'.$this->warehouseScope($warehouse);
+
+        return Cache::remember($cacheKey, now()->addSeconds(config('picking.order_detail_cache_ttl', 300)), function () use ($normalizedOrderNumber, $warehouse) {
+            $client = $this->factory->createForWarehouse($warehouse);
+            $response = $client->request('GET', "/v2/deliverydata/NP/{$normalizedOrderNumber}");
+
+            return $this->mapDeliveryMetadata($response['data'][0] ?? null);
+        });
+    }
+
+    private function mapDeliveryMetadata(?array $deliveryInfo): ?array
+    {
+        if (empty($deliveryInfo)) {
+            return null;
+        }
+
+        return [
+            'delivery_type' => ($deliveryInfo['CODIGOTIPOENTREGA'] ?? null) == 1 ? 'EXPEDICION' : null,
+        ];
     }
 }

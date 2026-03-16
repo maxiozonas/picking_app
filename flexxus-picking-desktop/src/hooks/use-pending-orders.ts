@@ -43,6 +43,7 @@ export interface UsePendingOrdersParams {
  * - **Warehouse Filter:** Automatically applies selected warehouse from context
  * - **Query Key:** `['pending-orders', warehouseId, search, status, page, perPage, dateFrom, dateTo]`
  * - **Data Source:** Merges Flexxus ERP data with local picking_order_progress records
+ * - **Contract:** `flexxus_created_at` stays external while `started_at`/`completed_at` remain local lifecycle timestamps
  * - **UX Feature:** Prevents layout shift during pagination transitions
  */
 export function usePendingOrders(params: UsePendingOrdersParams = {}) {

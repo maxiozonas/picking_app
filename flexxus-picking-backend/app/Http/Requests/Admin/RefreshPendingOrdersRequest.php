@@ -14,7 +14,7 @@ class RefreshPendingOrdersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
             'date_from' => ['nullable', 'date'],
         ];
     }

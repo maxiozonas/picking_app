@@ -40,9 +40,11 @@ const mockOrders = {
   data: [
     {
       id: 1,
-      order_number: 'EXP-2026-00123',
-      customer_name: 'Cliente ABC',
+      order_number: 'NP 623202',
+      customer: 'Cliente ABC',
       status: 'in_progress',
+      delivery_type: 'EXPEDICION',
+      flexxus_created_at: '2026-03-09T08:00:00Z',
       started_at: '2026-03-09T10:30:00Z',
       completed_at: null,
       warehouse: {
@@ -61,9 +63,11 @@ const mockOrders = {
     },
     {
       id: 2,
-      order_number: 'EXP-2026-00124',
-      customer_name: 'Cliente XYZ',
+      order_number: 'NP 623203',
+      customer: 'Cliente XYZ',
       status: 'pending',
+      delivery_type: 'EXPEDICION',
+      flexxus_created_at: '2026-03-09T09:00:00Z',
       started_at: null,
       completed_at: null,
       warehouse: {
@@ -88,9 +92,11 @@ const mockOrders = {
 
 const mockOrderDetail = {
   id: 1,
-  order_number: 'EXP-2026-00123',
-  customer_name: 'Cliente ABC',
+  order_number: 'NP 623202',
+  customer: 'Cliente ABC',
   status: 'in_progress',
+  delivery_type: 'EXPEDICION',
+  flexxus_created_at: '2026-03-09T08:00:00Z',
   started_at: '2026-03-09T10:30:00Z',
   completed_at: null,
   warehouse: {
@@ -181,6 +187,28 @@ export const handlers = [
   }),
 
   // Orders list endpoint
+  http.get('*/api/admin/pending-orders', ({ request }) => {
+    const url = new URL(request.url)
+    const warehouseId = url.searchParams.get('warehouse_id')
+
+    let filteredOrders = [...mockOrders.data]
+
+    if (warehouseId) {
+      filteredOrders = filteredOrders.filter((o) => o.warehouse.id === parseInt(warehouseId))
+    }
+
+    return HttpResponse.json({
+      data: filteredOrders,
+      meta: {
+        current_page: 1,
+        last_page: 1,
+        per_page: filteredOrders.length || 15,
+        total: filteredOrders.length,
+      },
+    })
+  }),
+
+  // Orders list endpoint
   http.get('*/api/admin/orders', ({ request }) => {
     const url = new URL(request.url)
     const warehouseId = url.searchParams.get('warehouse_id')
@@ -224,7 +252,7 @@ export const handlers = [
   http.get('*/api/admin/orders/:orderNumber', ({ params }) => {
     const { orderNumber } = params
 
-    if (orderNumber === 'EXP-2026-00123') {
+    if (orderNumber === 'NP 623202') {
       return HttpResponse.json(mockOrderDetail)
     }
 

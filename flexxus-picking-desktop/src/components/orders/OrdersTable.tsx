@@ -1,7 +1,7 @@
 import { OrderStatusBadge } from './OrderStatusBadge'
 import { OrderActions } from './OrderActions'
 import { PickingOrder } from '@/types/api'
-import { User, Clock } from 'lucide-react'
+import { User, Clock, CalendarDays, Truck } from 'lucide-react'
 
 interface OrdersTableProps {
   orders: PickingOrder[]
@@ -28,6 +28,24 @@ function formatDateRelative(dateString: string): string {
     month: '2-digit',
     year: 'numeric',
   })
+}
+
+function renderDateCell(label: string, value?: string | null, emptyLabel = 'Sin dato') {
+  if (!value) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
+        <Clock className="h-3 w-3" />
+        {emptyLabel}
+      </span>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground/70">{label}</p>
+      <p>{formatDateRelative(value)}</p>
+    </div>
+  )
 }
 
 export function OrdersTable({ orders, onRefresh, isLoading = false, className }: OrdersTableProps) {
@@ -68,7 +86,7 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-border">
-              {['Número', 'Cliente', 'Depósito', 'Estado', 'Empleado', 'Inicio', ''].map((h) => (
+              {['Número', 'Cliente', 'Depósito', 'Estado', 'Asignación y fechas', ''].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -90,7 +108,13 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {order.customer ?? <span className="italic opacity-50">—</span>}
+                  <div className="space-y-1">
+                    <p>{order.customer ?? <span className="italic opacity-50">—</span>}</p>
+                    <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                      <Truck className="h-3 w-3" />
+                      {order.delivery_type ?? 'Tipo sin resolver'}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {order.warehouse?.name || `Depósito ${order.warehouse_id}`}
@@ -98,23 +122,25 @@ export function OrdersTable({ orders, onRefresh, isLoading = false, className }:
                 <td className="px-4 py-3">
                   <OrderStatusBadge status={order.status} />
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {order.assigned_to?.name ?? (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                      <User className="h-3 w-3" />
-                      Sin asignar
-                    </span>
-                  )}
-                </td>
                 <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">
-                  {order.started_at ? (
-                    formatDateRelative(order.started_at)
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                      <Clock className="h-3 w-3" />
-                      Sin iniciar
-                    </span>
-                  )}
+                  <div className="space-y-3">
+                    <div>
+                      {order.assigned_to?.name ?? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
+                          <User className="h-3 w-3" />
+                          Sin asignar
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                        <CalendarDays className="h-3 w-3" />
+                        Fechas
+                      </div>
+                      {renderDateCell('Pedido Flexxus', order.flexxus_created_at, 'Sin fecha Flexxus')}
+                      {renderDateCell('Inicio picking', order.started_at, 'Sin iniciar')}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <OrderActions orderNumber={order.order_number} onRefresh={onRefresh} />
