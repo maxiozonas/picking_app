@@ -36,7 +36,12 @@ class WarehouseContextPickingControllerTest extends TestCase
         $service = Mockery::mock(PickingServiceInterface::class);
         $service->shouldReceive('getAvailableOrders')
             ->once()
-            ->with($user->id, ['status' => 'pending'], [])
+            ->with(
+                $user->id,
+                ['status' => 'pending'],
+                Mockery::on(fn ($requestContext) => is_array($requestContext)
+                    && ! isset($requestContext['override_warehouse_id']))
+            )
             ->andReturn($paginator);
 
         $this->app->instance(PickingServiceInterface::class, $service);
@@ -57,7 +62,12 @@ class WarehouseContextPickingControllerTest extends TestCase
         $service = Mockery::mock(PickingServiceInterface::class);
         $service->shouldReceive('getOrderDetail')
             ->once()
-            ->with($orderNumber, $user->id, [])
+            ->with(
+                $orderNumber,
+                $user->id,
+                Mockery::on(fn ($requestContext) => is_array($requestContext)
+                    && ! isset($requestContext['override_warehouse_id']))
+            )
             ->andReturn([
                 'order_number' => $orderNumber,
                 'customer_name' => 'Cliente Demo',
@@ -95,7 +105,12 @@ class WarehouseContextPickingControllerTest extends TestCase
         $service = Mockery::mock(PickingServiceInterface::class);
         $service->shouldReceive('getAvailableOrders')
             ->once()
-            ->with($user->id, [], [])
+            ->with(
+                $user->id,
+                [],
+                Mockery::on(fn ($requestContext) => is_array($requestContext)
+                    && ! isset($requestContext['override_warehouse_id']))
+            )
             ->andThrow(new WarehouseMismatchException('', $user->id, 0));
 
         $this->app->instance(PickingServiceInterface::class, $service);

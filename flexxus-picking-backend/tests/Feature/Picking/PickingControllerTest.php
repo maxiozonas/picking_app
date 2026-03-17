@@ -290,7 +290,7 @@ class PickingControllerTest extends TestCase
         });
 
         $response = $this->postJson("/api/picking/orders/{$orderNumber}/alerts", [
-            'alert_type' => 'stock_issue',
+            'alert_type' => 'insufficient_stock',
             'message' => 'Product not found',
             'severity' => 'high',
         ]);

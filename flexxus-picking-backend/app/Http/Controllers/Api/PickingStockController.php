@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\Picking\OrderNotFoundException;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\ResolvesWarehouseRequestContext;
 use App\Http\Requests\Picking\GetStockForItemRequest;
 use App\Http\Resources\PickingStockResource;
 use App\Http\Resources\PickingStockValidationResource;
@@ -14,6 +14,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PickingStockController extends Controller
 {
+    use ResolvesWarehouseRequestContext;
+
     public function __construct(
         private PickingServiceInterface $pickingService,
         private StockValidationServiceInterface $stockValidationService
@@ -21,22 +23,21 @@ class PickingStockController extends Controller
 
     public function getStockForItem(string $orderNumber, string $productCode, GetStockForItemRequest $request): JsonResponse
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $stock = $this->pickingService->getStockForItem(
             $orderNumber,
             $productCode,
-            auth()->id(),
+            $request->user()->id,
             $requestContext
         );
 
         if (! $stock) {
-            throw new OrderNotFoundException($productCode, [
-                'order_number' => $orderNumber,
-                'type' => 'item',
-            ]);
+            return response()->json([
+                'error' => [
+                    'message' => "Item {$productCode} not found in order {$orderNumber}",
+                ],
+            ], 404);
         }
 
         return response()->json([

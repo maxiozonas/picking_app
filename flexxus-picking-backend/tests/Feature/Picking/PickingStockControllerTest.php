@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Picking;
 
-use App\Models\PickingOrderProgress;
+use App\Exceptions\ExternalApi\ExternalApiConnectionException;
 use App\Models\User;
+use App\Services\Picking\Interfaces\StockValidationServiceInterface;
+use App\Services\Picking\PickingServiceInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Sanctum\Sanctum;
+use Mockery;
 use Tests\TestCase;
 
 class PickingStockControllerTest extends TestCase
@@ -15,6 +19,9 @@ class PickingStockControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->app->bind(PickingServiceInterface::class, function () {
+            return Mockery::mock(PickingServiceInterface::class);
+        });
     }
 
     public function test_can_get_stock_for_item(): void
@@ -24,24 +31,22 @@ class PickingStockControllerTest extends TestCase
 
         $orderNumber = 'ORD-001';
         $productCode = 'PROD-001';
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
 
-        $warehouseId = $user->warehouse_id;
-
-        // Create a picking order progress record with user's warehouse
-        $progress = PickingOrderProgress::factory()->create([
-            'order_number' => $orderNumber,
-            'user_id' => $user->id,
-            'warehouse_id' => $warehouseId,
-        ]);
-
-        // Create an item progress record
-        $progress->items()->create([
-            'order_number' => $orderNumber,
-            'product_code' => $productCode,
-            'quantity_required' => 10,
-            'quantity_picked' => 0,
-            'status' => 'pending',
-        ]);
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($orderNumber, $productCode, $user, $requestContext) {
+            $mock->shouldReceive('getStockForItem')
+                ->once()
+                ->with($orderNumber, $productCode, $user->id, $requestContext)
+                ->andReturn([
+                    'item_code' => $productCode,
+                    'available_quantity' => 12,
+                    'location' => 'A1',
+                    'last_updated' => now()->toIso8601String(),
+                    'warehouse_id' => $user->warehouse_id,
+                    'warehouse_code' => 'WH',
+                    'warehouse_name' => 'Warehouse',
+                ]);
+        });
 
         $response = $this->getJson("/api/picking/orders/{$orderNumber}/stock/{$productCode}");
 
@@ -60,6 +65,14 @@ class PickingStockControllerTest extends TestCase
     {
         $user = User::factory()->create();
         Sanctum::actingAs($user);
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
+            $mock->shouldReceive('getStockForItem')
+                ->once()
+                ->with('ORD-001', 'NONEXISTENT', $user->id, $requestContext)
+                ->andReturn(null);
+        });
 
         $response = $this->getJson('/api/picking/orders/ORD-001/stock/NONEXISTENT');
 
@@ -67,8 +80,27 @@ class PickingStockControllerTest extends TestCase
             ->assertJson([
                 'error' => [
                     'message' => 'Item NONEXISTENT not found in order ORD-001',
-                ],
-            ]);
+            ],
+        ]);
+    }
+
+    public function test_get_stock_for_item_returns_503_when_flexxus_provider_fails(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
+            $mock->shouldReceive('getStockForItem')
+                ->once()
+                ->with('ORD-001', 'PROD-001', $user->id, $requestContext)
+                ->andThrow(new ExternalApiConnectionException('/v2/products/PROD-001'));
+        });
+
+        $response = $this->getJson('/api/picking/orders/ORD-001/stock/PROD-001');
+
+        $response->assertStatus(503)
+            ->assertJsonPath('error.error_code', 'FLEXXUS_CONNECTION_ERROR');
     }
 
     public function test_can_get_validation_status_for_order(): void
@@ -77,6 +109,22 @@ class PickingStockControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $orderNumber = 'ORD-001';
+        $this->mock(StockValidationServiceInterface::class, function ($mock) use ($orderNumber) {
+            $mock->shouldReceive('getOrderValidations')
+                ->once()
+                ->with($orderNumber)
+                ->andReturn(new EloquentCollection([
+                    (object) [
+                        'id' => 1,
+                        'item_code' => 'PROD-001',
+                        'requested_qty' => 3,
+                        'available_qty' => 5,
+                        'validation_result' => 'valid',
+                        'validated_at' => now(),
+                        'error_code' => null,
+                    ],
+                ]));
+        });
 
         $response = $this->getJson("/api/picking/orders/{$orderNumber}/stock-validations");
 
@@ -99,6 +147,12 @@ class PickingStockControllerTest extends TestCase
     {
         $user = User::factory()->create();
         Sanctum::actingAs($user);
+        $this->mock(StockValidationServiceInterface::class, function ($mock) {
+            $mock->shouldReceive('getOrderValidations')
+                ->once()
+                ->with('ORD-999')
+                ->andReturn(new EloquentCollection());
+        });
 
         $response = $this->getJson('/api/picking/orders/ORD-999/stock-validations');
 

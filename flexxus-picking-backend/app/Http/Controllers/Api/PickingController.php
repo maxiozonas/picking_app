@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\ResolvesWarehouseRequestContext;
 use App\Http\Requests\Picking\CompleteOrderRequest;
 use App\Http\Requests\Picking\CreateAlertRequest;
 use App\Http\Requests\Picking\PickItemRequest;
@@ -19,6 +20,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PickingController extends Controller
 {
+    use ResolvesWarehouseRequestContext;
+
     public function __construct(
         private PickingServiceInterface $pickingService
     ) {}
@@ -31,9 +34,7 @@ class PickingController extends Controller
             'page' => $request->integer('page') ?: null,
             'per_page' => $request->integer('per_page') ?: null,
         ], fn ($value) => $value !== null && $value !== '');
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $orders = $this->pickingService->getAvailableOrders(
             $request->user()->id,
@@ -46,9 +47,7 @@ class PickingController extends Controller
 
     public function show(string $orderNumber, Request $request): PickingOrderDetailResource
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $order = $this->pickingService->getOrderDetail(
             $orderNumber,
@@ -61,9 +60,7 @@ class PickingController extends Controller
 
     public function start(string $orderNumber, StartOrderRequest $request): PickingOrderResource
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $progress = $this->pickingService->startOrder(
             $orderNumber,
@@ -76,9 +73,7 @@ class PickingController extends Controller
 
     public function pickItem(string $orderNumber, string $productCode, PickItemRequest $request): JsonResponse
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $result = $this->pickingService->pickItem(
             $orderNumber,
@@ -95,9 +90,7 @@ class PickingController extends Controller
 
     public function complete(string $orderNumber, CompleteOrderRequest $request): PickingOrderResource
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $progress = $this->pickingService->completeOrder(
             $orderNumber,
@@ -110,9 +103,7 @@ class PickingController extends Controller
 
     public function createAlert(string $orderNumber, CreateAlertRequest $request): JsonResponse
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
+        $requestContext = $this->warehouseRequestContext($request);
 
         $data = array_merge($request->validated(), [
             'order_number' => $orderNumber,
@@ -133,15 +124,10 @@ class PickingController extends Controller
 
     public function resolveAlert(int $id, ResolveAlertRequest $request): JsonResponse
     {
-        $requestContext = array_filter([
-            'override_warehouse_id' => $request->attributes->get('override_warehouse_id'),
-        ], fn ($value) => $value !== null);
-
         $alert = $this->pickingService->resolveAlert(
             $id,
             $request->user()->id,
-            $request->validated('notes', ''),
-            $requestContext
+            $request->validated('notes', '')
         );
 
         return (new PickingAlertResource($alert))->response();

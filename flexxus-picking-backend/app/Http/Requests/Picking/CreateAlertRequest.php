@@ -24,7 +24,7 @@ class CreateAlertRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'alert_type.in' => 'El tipo de alerta debe ser insufficient_stock, product_missing u order_issue.',
+            'alert_type.in' => 'El tipo de alerta debe ser insufficient_stock, product_missing o order_issue.',
         ];
     }
 }

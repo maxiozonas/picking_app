@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import api from '@/lib/api'
+import { buildPathWithQuery } from '@/lib/query-params'
 import { DashboardStats } from '@/types/api'
 import { QueryCacheTime } from '@/lib/query-config'
 
@@ -29,21 +30,13 @@ export function useStats(dateFrom?: string, dateTo?: string) {
   return useQuery<DashboardStats>({
     queryKey: ['stats', selectedWarehouseId, dateFrom, dateTo],
     queryFn: async () => {
-      const params = new URLSearchParams()
+      const endpoint = buildPathWithQuery('/admin/stats', [
+        ['warehouse_id', selectedWarehouseId],
+        ['date_from', dateFrom],
+        ['date_to', dateTo],
+      ])
 
-      if (selectedWarehouseId) {
-        params.append('warehouse_id', selectedWarehouseId.toString())
-      }
-
-      if (dateFrom) {
-        params.append('date_from', dateFrom)
-      }
-
-      if (dateTo) {
-        params.append('date_to', dateTo)
-      }
-
-      const response = await api.get(`/admin/stats?${params.toString()}`)
+      const response = await api.get(endpoint)
       return response.data
     },
     staleTime: QueryCacheTime.Stats,

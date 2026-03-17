@@ -1,6 +1,7 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
 import api from '@/lib/api'
+import { buildPathWithQuery } from '@/lib/query-params'
 import { PaginatedResponse, PickingOrder, OrderStatus, OrderDetail } from '@/types/api'
 import { QueryCacheTime } from '@/lib/query-config'
 
@@ -49,32 +50,17 @@ export function useOrders(params: UseOrdersParams = {}) {
   return useQuery<PaginatedResponse<PickingOrder>>({
     queryKey: ['orders', selectedWarehouseId, search, status, page, perPage, dateFrom, dateTo],
     queryFn: async () => {
-      const queryParams = new URLSearchParams()
+      const endpoint = buildPathWithQuery('/admin/orders', [
+        ['warehouse_id', selectedWarehouseId],
+        ['search', search],
+        ['status', status],
+        ['date_from', dateFrom],
+        ['date_to', dateTo],
+        ['per_page', perPage],
+        ['page', page],
+      ])
 
-      if (selectedWarehouseId) {
-        queryParams.append('warehouse_id', selectedWarehouseId.toString())
-      }
-
-      if (search) {
-        queryParams.append('search', search)
-      }
-
-      if (status) {
-        queryParams.append('status', status)
-      }
-
-      if (dateFrom) {
-        queryParams.append('date_from', dateFrom)
-      }
-
-      if (dateTo) {
-        queryParams.append('date_to', dateTo)
-      }
-
-      queryParams.append('per_page', perPage.toString())
-      queryParams.append('page', page.toString())
-
-      const response = await api.get(`/admin/orders?${queryParams.toString()}`)
+      const response = await api.get(endpoint)
       return response.data
     },
     placeholderData: keepPreviousData,

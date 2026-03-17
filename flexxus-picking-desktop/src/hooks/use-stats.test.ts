@@ -61,7 +61,7 @@ describe('useStats', () => {
       expect(result.current.isSuccess).toBe(true)
     })
 
-    expect(api.get).toHaveBeenCalledWith('/admin/stats?')
+    expect(api.get).toHaveBeenCalledWith('/admin/stats')
     expect(result.current.data).toEqual(mockStats)
   })
 

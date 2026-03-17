@@ -23,11 +23,16 @@ class MobilePickingContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user) {
             $mock->shouldReceive('getAvailableOrders')
                 ->once()
-                ->with($user->id, [
-                    'search' => '623200',
-                    'page' => 2,
-                    'per_page' => 20,
-                ], [])
+                ->withArgs(function (int $userId, array $filters, array $requestContext) use ($user) {
+                    return $userId === $user->id
+                        && $filters === [
+                            'search' => '623200',
+                            'page' => 2,
+                            'per_page' => 20,
+                        ]
+                        && ($requestContext['warehouse_id'] ?? null) === $user->warehouse_id
+                        && ($requestContext['user_id'] ?? null) === $user->id;
+                })
                 ->andReturn(new LengthAwarePaginator([], 0, 20, 2, ['path' => '/api/picking/orders']));
         });
 
@@ -78,7 +83,12 @@ class MobilePickingContractTest extends TestCase
         $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $warehouse, $alert) {
             $mock->shouldReceive('getOrderDetail')
                 ->once()
-                ->with('NP-623200', $user->id, [])
+                ->withArgs(function (string $orderNumber, int $userId, array $requestContext) use ($user) {
+                    return $orderNumber === 'NP-623200'
+                        && $userId === $user->id
+                        && ($requestContext['warehouse_id'] ?? null) === $user->warehouse_id
+                        && ($requestContext['user_id'] ?? null) === $user->id;
+                })
                 ->andReturn([
                     'order_type' => 'NP',
                     'order_number' => '623200',

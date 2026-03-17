@@ -18,7 +18,7 @@ class PickingAlertResource extends JsonResource
             'alert_type' => $this->alert_type ?? null,
             'message' => $this->message ?? null,
             'severity' => $this->severity ?? null,
-            'status' => ($this->is_resolved ?? false) ? 'resolved' : 'pending',
+            'status' => (($this->is_resolved ?? false) || $this->resolved_at !== null) ? 'resolved' : 'pending',
             'product_code' => $this->product_code ?? null,
             'created_at' => $this->created_at?->toIso8601String(),
             'resolved_at' => $this->resolved_at?->toIso8601String(),

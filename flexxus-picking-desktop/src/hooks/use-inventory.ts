@@ -1,5 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import apiClient from '@/lib/api'
+import { buildPathWithQuery } from '@/lib/query-params'
 import type { InventoryItem, PaginatedResponse } from '@/types/api'
 import { QueryCacheTime } from '@/lib/query-config'
 
@@ -44,14 +45,13 @@ export function useInventory({ warehouseId, page = 1, perPage = 20 }: UseInvento
   return useQuery({
     queryKey: ['inventory', { warehouseId, page, perPage }],
     queryFn: async () => {
-      const params = new URLSearchParams()
-      if (warehouseId) params.set('warehouse_id', String(warehouseId))
-      params.set('page', String(page))
-      params.set('per_page', String(perPage))
+      const endpoint = buildPathWithQuery('/admin/inventory', [
+        ['page', page],
+        ['per_page', perPage],
+        ['warehouse_id', warehouseId],
+      ])
 
-      const response = await apiClient.get<PaginatedResponse<InventoryItem>>(
-        `/admin/inventory?${params.toString()}`
-      )
+      const response = await apiClient.get<PaginatedResponse<InventoryItem>>(endpoint)
       return response.data
     },
     placeholderData: keepPreviousData,
@@ -89,12 +89,12 @@ export function useStockSearch({ productCode, warehouseId, enabled = true }: Use
   return useQuery({
     queryKey: ['inventory', 'search', { productCode, warehouseId }],
     queryFn: async () => {
-      const params = new URLSearchParams({ product_code: productCode })
-      if (warehouseId) params.set('warehouse_id', String(warehouseId))
+      const endpoint = buildPathWithQuery('/admin/inventory/search', [
+        ['product_code', productCode],
+        ['warehouse_id', warehouseId],
+      ])
 
-      const response = await apiClient.get<InventoryItem[]>(
-        `/admin/inventory/search?${params.toString()}`
-      )
+      const response = await apiClient.get<InventoryItem[]>(endpoint)
       return response.data
     },
     enabled: enabled && productCode.trim().length >= 2,

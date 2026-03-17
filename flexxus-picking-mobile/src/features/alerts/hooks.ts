@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { pendingOrdersQueryKeys } from '../orders/hooks'
+import { pickingQueryKeys } from '../picking/hooks'
 import type { OrderDetail } from '../picking/types'
 import { createOrderAlert } from './api'
 import type { CreateAlertInput, PickingAlert } from './types'
@@ -27,7 +28,7 @@ export function useCreateAlertMutation(orderNumber: string) {
   return useMutation({
     mutationFn: (input: CreateAlertInput) => createOrderAlert(orderNumber, input),
     onSuccess: (alert) => {
-      queryClient.setQueryData<OrderDetail>(['order-detail', orderNumber], (current) => {
+      queryClient.setQueryData<OrderDetail>(pickingQueryKeys.detail(orderNumber), (current) => {
         if (!current) {
           return current
         }
@@ -35,7 +36,10 @@ export function useCreateAlertMutation(orderNumber: string) {
         return mergeAlert(current, alert)
       })
 
-      void queryClient.invalidateQueries({ queryKey: ['order-detail', orderNumber], refetchType: 'active' })
+      void queryClient.invalidateQueries({
+        queryKey: pickingQueryKeys.detail(orderNumber),
+        refetchType: 'active',
+      })
       void queryClient.invalidateQueries({ queryKey: alertsQueryKeys.list(orderNumber) })
       void queryClient.invalidateQueries({ queryKey: pendingOrdersQueryKeys.all, refetchType: 'active' })
     },

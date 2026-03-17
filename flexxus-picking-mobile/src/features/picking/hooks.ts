@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/auth-store'
 import { completeOrder, getItemStock, getOrderDetail, getOrderStockValidations, pickOrderItem, startOrder } from './api'
 import type { ItemStockInfo, OrderDetail, PickItem, PickMutationResult, StockValidation } from './types'
 import { pendingOrdersQueryKeys } from '../orders/hooks'
+import { matchesPendingOrderNumber } from '../orders/order-number'
 import type { PendingOrder, PendingOrdersResponse } from '../orders/types'
 
 type PendingOrdersInfiniteData = InfiniteData<PendingOrdersResponse>
@@ -14,10 +15,6 @@ export const pickingQueryKeys = {
   detail: (orderNumber: string) => ['order-detail', orderNumber] as const,
   itemStock: (orderNumber: string, productCode: string) => ['order-stock', orderNumber, productCode] as const,
   stockValidations: (orderNumber: string) => ['order-stock-validations', orderNumber] as const,
-}
-
-function matchesOrder(order: { orderType: string; orderNumber: string }, fullOrderNumber: string) {
-  return `${order.orderType}-${order.orderNumber}` === fullOrderNumber
 }
 
 function patchPendingOrders(
@@ -125,7 +122,7 @@ export function useStartOrderMutation(orderNumber: string) {
       }
     },
     onSuccess: (order) => {
-      patchPendingOrders(queryClient, (current) => matchesOrder(current, orderNumber), () => order)
+      patchPendingOrders(queryClient, (current) => matchesPendingOrderNumber(current, orderNumber), () => order)
       void queryClient.invalidateQueries({ queryKey: pickingQueryKeys.detail(orderNumber) })
       void queryClient.invalidateQueries({ queryKey: pendingOrdersQueryKeys.all })
     },
@@ -183,7 +180,7 @@ export function usePickItemMutation(orderNumber: string) {
         return nextDetail
       })
 
-      patchPendingOrders(queryClient, (order) => matchesOrder(order, orderNumber), (order) => ({
+      patchPendingOrders(queryClient, (order) => matchesPendingOrderNumber(order, orderNumber), (order) => ({
         ...order,
         status: order.status === 'pending' ? 'in_progress' : order.status,
         itemsPicked: nextPickedItems ?? order.itemsPicked,
@@ -216,7 +213,7 @@ export function useCompleteOrderMutation(orderNumber: string) {
   return useMutation({
     mutationFn: () => completeOrder(orderNumber),
     onSuccess: (order) => {
-      patchPendingOrders(queryClient, (current) => matchesOrder(current, orderNumber), () => order)
+      patchPendingOrders(queryClient, (current) => matchesPendingOrderNumber(current, orderNumber), () => order)
       void queryClient.invalidateQueries({ queryKey: pickingQueryKeys.detail(orderNumber) })
       void queryClient.invalidateQueries({ queryKey: pendingOrdersQueryKeys.all })
     },

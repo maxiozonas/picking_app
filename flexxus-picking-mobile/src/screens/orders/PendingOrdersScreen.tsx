@@ -12,6 +12,7 @@ import { StatusChip } from '../../components/ui/StatusChip'
 import { OrderCard } from '../../features/orders/components/OrderCard'
 import { OrderSearchBar } from '../../features/orders/components/OrderSearchBar'
 import { useDebouncedValue, useInfinitePendingOrders } from '../../features/orders/hooks'
+import { buildPendingOrderNumber } from '../../features/orders/order-number'
 import type { PendingOrder } from '../../features/orders/types'
 import { formatWarehouseLabel } from '../../lib/utils/format'
 import type { OperatorStackParamList } from '../../navigation/types'
@@ -30,7 +31,7 @@ export function PendingOrdersScreen() {
 
     return (ordersQuery.data?.pages ?? []).flatMap((page) =>
       page.data.filter((order) => {
-        const key = `${order.orderType}-${order.orderNumber}`
+        const key = buildPendingOrderNumber(order)
 
         if (seen.has(key)) {
           return false
@@ -51,7 +52,7 @@ export function PendingOrdersScreen() {
 
   const openOrder = useCallback(
     (order: PendingOrder) => {
-      navigation.navigate('OrderDetail', { orderNumber: `${order.orderType}-${order.orderNumber}` })
+      navigation.navigate('OrderDetail', { orderNumber: buildPendingOrderNumber(order) })
     },
     [navigation],
   )
@@ -61,7 +62,7 @@ export function PendingOrdersScreen() {
     [openOrder],
   )
 
-  const keyExtractor = useCallback((item: PendingOrder) => `${item.orderType}-${item.orderNumber}`, [])
+  const keyExtractor = useCallback((item: PendingOrder) => buildPendingOrderNumber(item), [])
 
   const handleLoadMore = useCallback(() => {
     if (!ordersQuery.hasNextPage || ordersQuery.isFetchingNextPage || ordersQuery.isPending) {

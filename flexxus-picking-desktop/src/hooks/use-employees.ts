@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { buildPathWithQuery } from '@/lib/query-params'
 import { Employee, EmployeeFormData, PaginatedResponse, Warehouse } from '@/types/api'
 import { QueryCacheTime } from '@/lib/query-config'
 import { toast } from '@/hooks/use-toast'
@@ -68,17 +69,16 @@ export function useEmployees(params: UseEmployeesParams = {}) {
   return useQuery<PaginatedResponse<Employee>>({
     queryKey: ['employees', search, role, warehouse_id, is_active, page, perPage],
     queryFn: async () => {
-      const queryParams = new URLSearchParams()
+      const endpoint = buildPathWithQuery('/admin/users', [
+        ['search', search],
+        ['role', role && role !== 'all' ? role : undefined],
+        ['warehouse_id', warehouse_id],
+        ['is_active', is_active && is_active !== 'all' ? is_active : undefined],
+        ['page', page],
+        ['per_page', perPage],
+      ])
 
-      if (search) queryParams.append('search', search)
-      if (role && role !== 'all') queryParams.append('role', role)
-      if (warehouse_id) queryParams.append('warehouse_id', warehouse_id.toString())
-      if (is_active && is_active !== 'all') queryParams.append('is_active', is_active)
-
-      queryParams.append('page', page.toString())
-      queryParams.append('per_page', perPage.toString())
-
-      const response = await api.get(`/admin/users?${queryParams.toString()}`)
+      const response = await api.get(endpoint)
       return response.data
     },
     placeholderData: (previousData) => previousData ?? generatePlaceholderEmployees(perPage),
