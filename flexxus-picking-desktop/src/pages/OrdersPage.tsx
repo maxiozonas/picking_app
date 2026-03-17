@@ -4,14 +4,18 @@ import { OrdersTable } from '@/components/orders/OrdersTable'
 import { OrderFilters } from '@/components/orders/OrderFilters'
 import { WarehouseSelector } from '@/components/dashboard/WarehouseSelector'
 import { OrderStatus } from '@/types/api'
+import { useWarehouseFilterStore } from '@/contexts/WarehouseFilterContext'
+import api from '@/lib/api'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 export function OrdersPage() {
   const [searchValue, setSearchValue] = useState('')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const queryClient = useQueryClient()
+  const selectedWarehouseId = useWarehouseFilterStore((state) => state.selectedWarehouseId)
 
   const [debouncedSearch, setDebouncedSearch] = useState('')
   React.useEffect(() => {
@@ -28,8 +32,20 @@ export function OrdersPage() {
     page: currentPage,
   })
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['pending-orders'] })
+  const handleRefresh = async () => {
+    if (isRefreshing) {
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      await api.post('/admin/pending-orders/refresh', {
+        warehouse_id: selectedWarehouseId ?? undefined,
+      })
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ['pending-orders'] })
+      setIsRefreshing(false)
+    }
   }
 
   if (isError) {
@@ -63,6 +79,14 @@ export function OrdersPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestión de pedidos de picking</p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 rounded border border-border bg-surface px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+        </button>
         {data && !isPlaceholderData && (
           <div className="text-right">
             <p className="font-display text-2xl font-bold tabular-nums text-primary">
@@ -87,7 +111,11 @@ export function OrdersPage() {
         </div>
       </div>
 
-      <OrdersTable orders={data?.data || []} isLoading={isLoading || isPlaceholderData} onRefresh={handleRefresh} />
+      <OrdersTable
+        orders={data?.data || []}
+        isLoading={isLoading || isPlaceholderData || isRefreshing}
+        onRefresh={handleRefresh}
+      />
 
       {/* Pagination */}
       {data && data.meta.last_page > 1 && (

@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
@@ -8,8 +8,19 @@ import { usePendingOrders } from '@/hooks/use-pending-orders'
 
 const invalidateQueries = vi.fn()
 const ordersTableSpy = vi.fn()
+const { post } = vi.hoisted(() => ({
+  post: vi.fn().mockResolvedValue({ data: {} }),
+}))
 
 vi.mock('@/hooks/use-pending-orders')
+vi.mock('@/contexts/WarehouseFilterContext', () => ({
+  useWarehouseFilterStore: (selector: any) => selector({ selectedWarehouseId: null }),
+}))
+vi.mock('@/lib/api', () => ({
+  default: {
+    post,
+  },
+}))
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
 
@@ -78,6 +89,7 @@ describe('OrdersPage', () => {
     expect(screen.getByText('Pedidos')).toBeInTheDocument()
     expect(screen.getByTestId('warehouse-selector')).toBeInTheDocument()
     expect(screen.getByTestId('orders-count')).toHaveTextContent('0')
+    expect(screen.getByRole('button', { name: /Actualizar/i })).toBeInTheDocument()
   })
 
   it('passes delivery and explicit date metadata to the table', () => {
@@ -127,7 +139,7 @@ describe('OrdersPage', () => {
     expect(screen.getByText('Internal Server Error')).toBeInTheDocument()
   })
 
-  it('invalidates pending orders when refresh is triggered', () => {
+  it('invalidates pending orders when refresh is triggered', async () => {
     vi.mocked(usePendingOrders).mockReturnValue({
       data: {
         data: [],
@@ -140,8 +152,48 @@ describe('OrdersPage', () => {
     } as any)
 
     render(<OrdersPage />, { wrapper })
-    fireEvent.click(screen.getByTestId('refresh-btn'))
+    fireEvent.click(screen.getByRole('button', { name: /^Actualizar$/i }))
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-orders'] })
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith('/admin/pending-orders/refresh', {
+        warehouse_id: undefined,
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-orders'] })
+    })
+  })
+
+  it('disables the header refresh button while the sync is in progress', async () => {
+    let resolvePost: (value: unknown) => void = () => {}
+    post.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePost = resolve
+        })
+    )
+
+    vi.mocked(usePendingOrders).mockReturnValue({
+      data: {
+        data: [],
+        meta: { current_page: 1, last_page: 1, per_page: 15, total: 0 },
+      },
+      isLoading: false,
+      isPlaceholderData: false,
+      isError: false,
+      error: null,
+    } as any)
+
+    render(<OrdersPage />, { wrapper })
+
+    const refreshButton = screen.getByRole('button', { name: /Actualizar/i })
+    fireEvent.click(refreshButton)
+
+    expect(refreshButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Actualizando/i })).toBeInTheDocument()
+
+    resolvePost({})
+
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['pending-orders'] })
+    })
   })
 })
