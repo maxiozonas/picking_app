@@ -1,105 +1,110 @@
 # AGENTS.md
 
-Guia operativa para agentes que trabajen en `picking.app`.
+Guia operativa corta para agentes que trabajen en `picking.app`.
 
-## 1. Objetivo del repositorio
+## 1) Objetivo del repo
 
-Este repo es un monorepo con tres aplicaciones:
+Monorepo con 3 apps:
 
-- `flexxus-picking-backend`: API Laravel 12 para autenticacion, picking, stock, alertas y administracion.
-- `flexxus-picking-desktop`: app React + Vite para administracion.
-- `flexxus-picking-mobile`: app Expo/React Native para operarios.
+- `flexxus-picking-backend`: API Laravel 12 (auth, picking, stock, alertas, admin).
+- `flexxus-picking-desktop`: React + Vite para administracion.
+- `flexxus-picking-mobile`: Expo/React Native para operarios.
 
-El backend es la fuente principal de reglas de negocio. Flexxus ERP es la fuente externa de verdad para pedidos y stock remoto; la base local persiste progreso, alertas, credenciales por deposito y contexto operativo.
+Flexxus ERP sigue siendo fuente externa para pedidos/stock, pero los listados de pedidos ya no dependen de llamada remota por request.
 
-## 2. Prioridades del agente
+## 2) Prioridades del agente
 
-1. Entender primero que aplicacion toca el cambio.
+1. Identificar primero que app/modulo toca el cambio.
 2. Preservar aislamiento por warehouse/deposito.
-3. Mantener la logica de negocio en services, no en controllers.
-4. No degradar tests ni contratos de API.
-5. Hacer cambios pequenos, coherentes y verificables.
+3. Mantener logica de negocio en services/use cases, no en controllers/components.
+4. No romper contratos HTTP ni tests existentes.
+5. Hacer cambios chicos, verificables y sin side effects innecesarios.
 
-## 3. Mapa rapido del repo
+## 3) Mapa rapido
 
 ```text
 docs/
 flexxus-picking-backend/
-  app/
-  config/
-  database/
-  routes/
-  tests/
+  app/ config/ database/ routes/ tests/
 flexxus-picking-desktop/
-  src/
-  package.json
+  src/ package.json
 flexxus-picking-mobile/
-  App.tsx
-  package.json
+  src/ package.json
 ```
 
-## 4. Stack real
+## 4) Stack real
 
 - Backend: PHP 8.2, Laravel 12, Sanctum, Spatie Permission, PHPUnit.
 - Desktop: React 19, TypeScript, Vite, TanStack Query v5, Zustand, Vitest.
-- Mobile: Expo 55, React Native 0.83, TypeScript, Zustand.
+- Mobile: Expo 55, React Native 0.83, TypeScript, Zustand, React Query.
 
-## 5. Principios de trabajo
+## 5) Flujo de pedidos (importante)
 
-- Leer primero el codigo relevante antes de proponer cambios.
-- Usar la implementacion existente como referencia de estilo.
-- Favorecer interfaces e inyeccion de dependencias en Laravel.
-- Mantener respuestas HTTP via Resources y Requests cuando el flujo ya usa ese patron.
-- Evitar cambios transversales sin pruebas que los respalden.
-- No meter ejemplos extensos ni tutoriales dentro de este archivo.
+### Nuevo modelo (actual)
 
-## 6. Backend: arquitectura esperada
+- Los listados de pedidos usan **snapshot local** y no pegan a Flexxus en cada ingreso.
+- Sync automatico cada 2 minutos por job scheduler.
+- Refresh manual dispara sync forzado.
 
-- Controllers: coordinan request, auth y response.
-- Form Requests: validan entrada.
-- Services: concentran reglas de negocio.
-- Models: relaciones, casts, scopes y persistencia.
-- Resources: definen el contrato JSON.
-- Exceptions: expresar errores de dominio y de integracion externa.
+### Backend involucrado
 
-### Reglas importantes
+- Tablas:
+  - `flexxus_order_snapshots`
+  - `flexxus_sync_states`
+- Servicio:
+  - `app/Services/Picking/FlexxusOrderSnapshotService.php`
+- Job:
+  - `app/Jobs/SyncFlexxusOrderSnapshotsJob.php`
+- Scheduler:
+  - `routes/console.php` (`everyTwoMinutes()`).
 
-- Inyectar interfaces cuando ya existan en `App\Services\...\Interfaces`.
-- No lanzar `\Exception` para errores de dominio si ya existe una excepcion especifica.
-- Mantener contexto de warehouse en operaciones de picking y admin.
-- Respetar fallback de credenciales Flexxus solo cuando el codigo actual lo contemple.
-- Si tocas queries Eloquent, revisar eager loading y N+1.
+### Endpoints clave
 
-## 7. Backend: areas sensibles
+- Admin:
+  - `GET /api/admin/pending-orders` -> lee snapshot local + merge con progreso local.
+  - `POST /api/admin/pending-orders/refresh` -> fuerza sync.
+- Operario:
+  - `GET /api/picking/orders` -> lee snapshot local.
+  - `POST /api/picking/orders/refresh` -> fuerza sync.
 
-- `app/Services/Picking/*`: flujo principal de picking, stock y alertas.
-- `app/Services/Admin/*`: operaciones administrativas.
-- `app/Http/Clients/Flexxus/*`: integracion externa.
-- `app/Http/Middleware/WarehouseOverrideMiddleware.php`: contexto de warehouse.
-- `app/Exceptions/*`: contrato de errores.
-- `tests/Feature` y `tests/Unit`: la cobertura existente documenta comportamiento esperado.
+## 6) Arquitectura backend esperada
 
-## 8. Frontend desktop: arquitectura esperada
+- Controllers: auth/request/response.
+- Form Requests: validacion.
+- Services + UseCases: reglas de negocio.
+- Models: persistencia y relaciones.
+- Resources: contrato JSON.
+- Exceptions: dominio e integraciones externas.
 
-- Paginas en `src/pages`.
-- UI reusable en `src/components`.
-- Hooks de datos en `src/hooks`.
-- Cliente API y config de cache en `src/lib`.
-- Estado cliente acotado en `src/stores`.
+Reglas:
 
-### Reglas importantes
+- Inyectar interfaces cuando existan.
+- Mantener contexto de warehouse en todas las operaciones sensibles.
+- Evitar N+1 al tocar queries Eloquent.
+- Evitar atrapar excepciones en controller salvo patron existente.
 
-- Mantener query keys consistentes con los hooks existentes.
-- No fabricar placeholder data falsa para listas paginadas.
-- Invalidar cache despues de mutaciones relevantes.
-- Preservar tests de componentes, hooks y flujos con MSW/Vitest.
-- Seguir patrones ya presentes antes de introducir otra libreria o abstraccion.
+## 7) Areas sensibles backend
 
-## 9. Mobile
+- `app/Services/Picking/*`
+- `app/Http/Clients/Flexxus/*`
+- `app/Http/Middleware/WarehouseOverrideMiddleware.php`
+- `app/Exceptions/*`
+- `tests/Feature` y `tests/Unit`
 
-La app mobile hoy es mas pequena que desktop/backend. Antes de introducir estructura nueva, revisar primero `App.tsx`, dependencias instaladas y el flujo actual. No asumir que comparte arquitectura 1:1 con desktop.
+## 8) Desktop (reglas practicas)
 
-## 10. Comandos utiles
+- Hooks de datos en `src/hooks`, cache y cliente en `src/lib`.
+- Mantener query keys consistentes.
+- No generar placeholder fake para listas paginadas.
+- Refresh manual de pedidos debe usar endpoint de refresh real antes de invalidar cache.
+
+## 9) Mobile (reglas practicas)
+
+- Revisar primero `src/screens` y `src/features`.
+- No asumir estructura 1:1 con desktop.
+- Pull-to-refresh en pedidos debe forzar sync (endpoint refresh) y luego refetch.
+
+## 10) Comandos utiles
 
 ### Backend
 
@@ -127,132 +132,54 @@ pnpm format:check
 
 ```bash
 cd flexxus-picking-mobile
+npm test
 npm start
 npm run android
 npm run ios
 ```
 
-## 11. Flujo recomendado para cambios
+## 11) Testing expectations
 
-1. Identificar modulo y archivos afectados.
-2. Leer tests y codigo relacionado.
-3. Cambiar lo minimo necesario.
-4. Ejecutar pruebas focalizadas.
-5. Ejecutar formateo/lint del modulo tocado.
-6. Resumir impacto, riesgos y validacion ejecutada.
+- Cambio de dominio backend: agregar/ajustar PHPUnit tests.
+- Cambio de contrato HTTP: cubrir con Feature tests.
+- Cambio de hooks/UI desktop: correr Vitest.
+- Cambio mobile: correr Jest del feature tocado.
+- Nunca borrar tests para "hacer pasar".
+- Si no pudiste correr algo, reportarlo explicitamente.
 
-## 12. Testing expectations
+## 12) Convenciones de implementacion
 
-- Si cambias dominio backend, agregar o ajustar tests en PHPUnit.
-- Si cambias contrato HTTP, cubrir con Feature tests o Resources tests indirectos.
-- Si cambias hooks o UI desktop, correr Vitest y actualizar mocks si hace falta.
-- No eliminar tests para "hacer pasar" el cambio.
-- Si no pudiste correr pruebas, explicitarlo al final.
-
-## 13. Convenciones de implementacion
-
-- Type hints y return types siempre que el archivo siga ese estilo.
+- Type hints/return types cuando el archivo ya sigue ese estilo.
 - Nombres descriptivos y consistentes con el dominio.
-- Comentarios solo si aclaran una decision no obvia.
-- Configuracion en `config()` o variables de entorno; no hardcodear secretos.
-- Mantener compatibilidad con el contrato actual salvo pedido explicito.
+- Comentarios solo para decisiones no obvias.
+- Config via `config()` o env vars; no hardcode de secretos.
+- Mantener compatibilidad de contrato salvo pedido explicito.
 
-## 14. Manejo de errores
+## 13) Manejo de errores
 
-- Preferir excepciones de dominio en `app/Exceptions/Picking`.
-- Para Flexxus, usar excepciones de `app/Exceptions/ExternalApi`.
-- No capturar excepciones en controllers salvo que el flujo existente lo requiera.
-- Incluir contexto util para depuracion sin exponer secretos.
+- Dominio picking: `app/Exceptions/Picking`.
+- Integracion externa: `app/Exceptions/ExternalApi`.
+- Incluir contexto util de debug sin exponer credenciales.
 
-## 15. Que evitar
+## 14) Que evitar
 
-- Logica de negocio en controllers o components pesados.
-- Responder modelos Eloquent crudos si ya hay Resource.
-- Cambios de schema sin migracion y test asociados.
-- Querys sin paginacion en listados grandes.
-- Cambios destructivos sobre credenciales, warehouse context o auth sin validar impacto.
-- Reescrituras amplias si el pedido es puntual.
+- Logica de negocio en controllers/components.
+- Cambios de schema sin migracion y tests.
+- Querys grandes sin paginacion.
+- Cambios destructivos de auth/warehouse/credenciales sin validar impacto.
+- Rewrites amplios si el pedido es puntual.
 
-## 16. Backend Testing Best Practices
+## 15) Cierre de tarea
 
-### RefreshDatabase vs DatabaseMigrations
-
-**Use `RefreshDatabase`** for:
-- Most unit and feature tests that don't test transaction behavior
-- Tests that require fast execution (RefreshDatabase uses transaction rollback)
-- Tests that don't use encrypted model casts
-
-**Use `DatabaseMigrations`** for:
-- Tests that verify transaction nesting behavior (DB::transactionLevel() assertions)
-- Tests that interact with encrypted model attributes (Warehouse credentials, etc.)
-- Tests that encounter "There is already an active transaction" errors
-- Tests that need to verify transaction rollback behavior
-
-**Why**: RefreshDatabase wraps the entire test in a transaction, which:
-- Conflicts with tests that verify their own transaction levels
-- Causes issues with Laravel's encrypted casts when models are created/accessed within the wrapper
-- Prevents accurate testing of nested transaction behavior
-
-DatabaseMigrations is slower but provides a clean database state without transaction wrapper interference.
-
-**Example**:
-```php
-// ❌ Wrong - causes "already active transaction" with encrypted casts
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-// ✅ Correct - no transaction conflicts
-use Illuminate\Foundation\Testing\DatabaseMigrations;
-```
-
-### Encrypted Model Casts in Tests
-
-**Always use Eloquent models** when testing encrypted attributes:
-```php
-// ❌ Wrong - bypasses encryption/decryption
-$warehouse = DB::table('warehouses')->where('code', '001')->first();
-$this->assertEquals('SECRET', $warehouse->flexxus_username); // FAILS
-
-// ✅ Correct - uses encrypted cast
-$warehouse = Warehouse::where('code', '001')->first();
-$this->assertEquals('SECRET', $warehouse->flexxus_username); // PASSES
-```
-
-### Service Mocking
-
-**Mock interfaces, not concrete classes**:
-```php
-// ❌ Wrong - mocking concrete class with constructor dependencies
-$mockFlexxus = $this->createMock(FlexxusPickingService::class);
-
-// ✅ Correct - mocking the actual interface
-$mockProductService = $this->createMock(FlexxusProductServiceInterface::class);
-```
-
-### Test Data Isolation
-
-Each test method should create fresh data:
-```php
-public function test_something(): void
-{
-    // Create unique data for this test
-    $warehouse = Warehouse::factory()->create(['code' => 'WH_TEST_'.uniqid()]);
-    // ...test code...
-}
-```
-
-## 17. Fuentes de verdad dentro del repo
-
-Al cerrar una tarea, informar de forma breve:
+Al finalizar, informar breve:
 
 - que se cambio,
 - donde se cambio,
 - que pruebas se corrieron,
-- que riesgo o pendiente queda, si existe.
+- que riesgo/pendiente queda.
 
-## 18. Mantenimiento de este archivo
+## 16) Mantenimiento de este archivo
 
-Este archivo debe mantenerse corto, operativo y especifico del repo.
-
-- Preferir reglas y decisiones, no ejemplos largos.
-- Actualizarlo cuando cambie la arquitectura real.
-- Si una seccion deja de reflejar el codigo actual, corregirla o eliminarla.
+- Mantenerlo operativo y corto.
+- Actualizar cuando cambie arquitectura real.
+- Si una seccion queda desactualizada, corregir o eliminar.

@@ -7,6 +7,17 @@ Sistema de picking para corralones con integración a Flexxus ERP.
 [![Tests: Mobile](https://img.shields.io/badge/Tests-Mobile%2016%20passing-success?style=flat-square)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
+## Novedades (2026-03-17)
+
+- Listados de pedidos ahora se sirven desde snapshot local en backend para evitar latencia por consulta remota al entrar.
+- Sincronizacion automatica de pedidos Flexxus cada 2 minutos con scheduler.
+- Refresh manual con sync forzado:
+  - `POST /api/admin/pending-orders/refresh`
+  - `POST /api/picking/orders/refresh`
+- Lecturas principales de pedidos:
+  - `GET /api/admin/pending-orders`
+  - `GET /api/picking/orders`
+
 ## 📋 Overview
 
 **picking.app** es un sistema de gestión de pedidos para corralones (ferreterías de construcción) que combina una API Laravel robusta con dos aplicaciones frontend:
@@ -15,7 +26,7 @@ Sistema de picking para corralones con integración a Flexxus ERP.
 - **Desktop** (`flexxus-picking-desktop`): App React 19 + Vite para administración y gestión operativa
 - **Mobile** (`flexxus-picking-mobile`): App Expo 55 para operarios de depósito
 
-El sistema mantiene una base de datos local persistente para seguimiento de progreso, alertas y contexto operativo por depósito, mientras consume información de pedidos y stock remoto desde Flexxus ERP.
+El sistema mantiene una base de datos local persistente para seguimiento de progreso, alertas y contexto operativo por depósito. Los listados de pedidos se leen desde snapshot local y se sincronizan con Flexxus en segundo plano.
 
 ### Arquitectura
 
@@ -53,7 +64,7 @@ El sistema mantiene una base de datos local persistente para seguimiento de prog
 - ✅ **Picking workflow**: Listado, inicio, picking y finalización de pedidos
 - ✅ **Stock y alertas**: Validación de stock local + remoto, sistema de alertas configurables
 - ✅ **Admin features**: Gestión de productos, depósitos, usuarios y credenciales Flexxus
-- ✅ **Flexxus ERP integration**: Cliente HTTP Guzzle para sincronización con ERP externo
+- ✅ **Order snapshots**: snapshot local de pedidos + sync automático + refresh manual
 
 ### Desktop (React 19 + Vite)
 
@@ -202,6 +213,10 @@ php artisan migrate
 
 # (Opcional) Ejecutar seeders
 php artisan db:seed
+
+# Ejecutar workers (recomendado para jobs de sincronización)
+php artisan queue:work
+php artisan schedule:work
 
 # Iniciar servidor de desarrollo
 php artisan serve
@@ -488,4 +503,4 @@ Este proyecto está licenciado bajo la [MIT License](LICENSE).
 
 ---
 
-**Última actualización**: 2026-03-16
+**Última actualización**: 2026-03-17
