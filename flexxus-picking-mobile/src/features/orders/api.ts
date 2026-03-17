@@ -48,6 +48,7 @@ export async function getPendingOrders(params: PendingOrdersQueryParams): Promis
       page: params.page,
       per_page: params.perPage,
       search: params.search || undefined,
+      force_refresh: params.forceRefresh ? 1 : undefined,
     },
   })
 
@@ -55,4 +56,12 @@ export async function getPendingOrders(params: PendingOrdersQueryParams): Promis
     data: response.data.data.map(mapPendingOrder),
     meta: mapPagination(response.data.meta),
   }
+}
+
+export async function refreshPendingOrdersSnapshot(params: Omit<PendingOrdersQueryParams, 'forceRefresh'>): Promise<void> {
+  await apiClient.post('/picking/orders/refresh', {
+    page: params.page,
+    per_page: params.perPage,
+    search: params.search || undefined,
+  })
 }

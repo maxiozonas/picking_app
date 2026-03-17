@@ -66,4 +66,5 @@ export type PendingOrdersQueryParams = {
   page: number
   perPage: number
   search?: string
+  forceRefresh?: boolean
 }

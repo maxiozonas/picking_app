@@ -11,6 +11,7 @@ import { Screen } from '../../components/ui/Screen'
 import { StatusChip } from '../../components/ui/StatusChip'
 import { OrderCard } from '../../features/orders/components/OrderCard'
 import { OrderSearchBar } from '../../features/orders/components/OrderSearchBar'
+import { refreshPendingOrdersSnapshot } from '../../features/orders/api'
 import { useDebouncedValue, useInfinitePendingOrders } from '../../features/orders/hooks'
 import { buildPendingOrderNumber } from '../../features/orders/order-number'
 import type { PendingOrder } from '../../features/orders/types'
@@ -23,6 +24,7 @@ export function PendingOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<OperatorStackParamList, 'PendingOrders'>>()
   const user = useAuthStore((state) => state.user)
   const [searchDraft, setSearchDraft] = useState('')
+  const [isSourceRefreshing, setIsSourceRefreshing] = useState(false)
   const debouncedSearch = useDebouncedValue(searchDraft.trim())
 
   const ordersQuery = useInfinitePendingOrders(debouncedSearch)
@@ -47,7 +49,7 @@ export function PendingOrdersScreen() {
   const resultsLabel = debouncedSearch
     ? `${totalResults} resultado${totalResults === 1 ? '' : 's'}`
     : `${totalResults} pedido${totalResults === 1 ? '' : 's'} activos`
-  const isRefreshing = ordersQuery.isRefetching && !ordersQuery.isFetchingNextPage
+  const isRefreshing = isSourceRefreshing || (ordersQuery.isRefetching && !ordersQuery.isFetchingNextPage)
   const isSearching = searchDraft.trim() !== debouncedSearch || (ordersQuery.isFetching && orders.length > 0)
 
   const openOrder = useCallback(
@@ -71,6 +73,21 @@ export function PendingOrdersScreen() {
 
     void ordersQuery.fetchNextPage()
   }, [ordersQuery])
+
+  const handleRefresh = useCallback(async () => {
+    setIsSourceRefreshing(true)
+
+    try {
+      await refreshPendingOrdersSnapshot({
+        page: 1,
+        perPage: 20,
+        search: debouncedSearch,
+      })
+      await ordersQuery.refetch()
+    } finally {
+      setIsSourceRefreshing(false)
+    }
+  }, [debouncedSearch, ordersQuery.refetch])
 
   const header = (
     <View style={styles.listHeader}>
@@ -144,7 +161,7 @@ export function PendingOrdersScreen() {
         ListHeaderComponent={header}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.35}
-        refreshControl={<RefreshControl onRefresh={() => void ordersQuery.refetch()} refreshing={isRefreshing} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl onRefresh={() => void handleRefresh()} refreshing={isRefreshing} tintColor={colors.accent} />}
         renderItem={renderOrder}
         showsVerticalScrollIndicator={false}
         style={styles.list}
