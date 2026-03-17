@@ -6,7 +6,7 @@ use App\Models\PickingOrderProgress;
 use App\Models\Warehouse;
 use App\Services\Picking\DTO\AvailableOrdersFilters;
 use App\Services\Picking\DTO\PickingRequestContext;
-use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
+use App\Services\Picking\FlexxusOrderSnapshotService;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\OrderNumberParser;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,7 +14,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 final class ListAvailableOrdersUseCase
 {
     public function __construct(
-        private readonly FlexxusOrderServiceInterface $orderService,
+        private readonly FlexxusOrderSnapshotService $snapshotService,
         private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver
     ) {}
 
@@ -28,15 +28,13 @@ final class ListAvailableOrdersUseCase
 
         $today = now()->format('Y-m-d');
 
-        $flexxusOrders = $this->orderService->getOrdersByDateAndWarehouse(
-            $today,
-            $warehouse
-        );
+        if ($filters->forceRefresh) {
+            $this->snapshotService->syncForWarehouse($warehouse, $today, true);
+        }
 
-        $orderNumbers = array_map(
-            fn ($o) => OrderNumberParser::normalize('NP '.($o['NUMEROCOMPROBANTE'] ?? '')),
-            $flexxusOrders
-        );
+        $snapshots = $this->snapshotService->ensureSnapshotsForWarehouse($warehouse, $today);
+
+        $orderNumbers = $snapshots->pluck('order_number')->all();
 
         $localProgress = PickingOrderProgress::whereIn('order_number', $orderNumbers)
             ->where('warehouse_id', $context->warehouseId)
@@ -44,24 +42,23 @@ final class ListAvailableOrdersUseCase
             ->get()
             ->keyBy('order_number');
 
-        $mergedOrders = collect($flexxusOrders)->map(function ($flexxusOrder) use ($localProgress, $warehouse) {
-            $rawOrderNumber = 'NP '.($flexxusOrder['NUMEROCOMPROBANTE'] ?? '');
-            $orderNumber = OrderNumberParser::normalize($rawOrderNumber);
-            $parsed = OrderNumberParser::parse($rawOrderNumber);
+        $mergedOrders = $snapshots->map(function ($snapshot) use ($localProgress, $warehouse) {
+            $parsed = OrderNumberParser::parse($snapshot->order_number);
+            $orderNumber = $parsed['canonical_key'];
             $progress = $localProgress->get($orderNumber);
 
             return [
                 'order_type' => $parsed['order_type'],
                 'order_number' => $parsed['order_number'],
-                'customer' => $flexxusOrder['RAZONSOCIAL'] ?? 'Unknown',
+                'customer' => $snapshot->customer ?? 'Unknown',
                 'warehouse' => [
                     'id' => $warehouse->id,
                     'code' => $warehouse->code,
                     'name' => $warehouse->name,
                 ],
-                'total' => (float) ($flexxusOrder['TOTAL'] ?? 0),
-                'created_at' => $flexxusOrder['FECHACOMPROBANTE'] ?? now()->toIso8601String(),
-                'delivery_type' => 'EXPEDICION',
+                'total' => (float) $snapshot->total,
+                'created_at' => $snapshot->payload['FECHACOMPROBANTE'] ?? $snapshot->flexxus_created_at?->toIso8601String(),
+                'delivery_type' => $snapshot->delivery_type ?? 'EXPEDICION',
                 'items_count' => 0,
                 'status' => $progress ? $progress->status : 'pending',
                 'started_at' => $progress?->started_at?->toIso8601String() ?? '',

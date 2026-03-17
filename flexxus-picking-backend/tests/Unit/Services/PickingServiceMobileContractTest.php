@@ -85,7 +85,7 @@ class PickingServiceMobileContractTest extends TestCase
 
         $this->orderService
             ->shouldReceive('getOrdersByDateAndWarehouse')
-            ->twice()
+            ->once()
             ->with($today, Mockery::type(Warehouse::class))
             ->andReturn([
                 [
@@ -127,7 +127,7 @@ class PickingServiceMobileContractTest extends TestCase
 
         $this->orderService
             ->shouldReceive('getOrdersByDateAndWarehouse')
-            ->twice()
+            ->once()
             ->with($today, Mockery::type(Warehouse::class))
             ->andReturn($orders);
 

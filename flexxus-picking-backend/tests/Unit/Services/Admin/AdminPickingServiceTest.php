@@ -6,6 +6,7 @@ use App\Models\PickingOrderProgress;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Picking\AdminPickingService;
+use App\Services\Picking\FlexxusOrderSnapshotService;
 use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -26,7 +27,10 @@ class AdminPickingServiceTest extends TestCase
         parent::setUp();
 
         $this->orderService = $this->createMock(FlexxusOrderServiceInterface::class);
-        $this->service = new AdminPickingService($this->orderService);
+        $this->service = new AdminPickingService(
+            $this->orderService,
+            new FlexxusOrderSnapshotService($this->orderService)
+        );
         Cache::flush();
     }
 

@@ -34,6 +34,31 @@ class PickingController extends Controller
             'page' => $request->integer('page') ?: null,
             'per_page' => $request->integer('per_page') ?: null,
         ], fn ($value) => $value !== null && $value !== '');
+
+        if ($request->boolean('force_refresh')) {
+            $filters['force_refresh'] = true;
+        }
+
+        $requestContext = $this->warehouseRequestContext($request);
+
+        $orders = $this->pickingService->getAvailableOrders(
+            $request->user()->id,
+            $filters,
+            $requestContext
+        );
+
+        return new PickingOrderCollection($orders);
+    }
+
+    public function refreshOrders(Request $request): PickingOrderCollection
+    {
+        $filters = array_filter([
+            'status' => $request->input('status'),
+            'search' => $request->input('search'),
+            'page' => $request->integer('page') ?: null,
+            'per_page' => $request->integer('per_page') ?: null,
+            'force_refresh' => true,
+        ], fn ($value) => $value !== null && $value !== '');
         $requestContext = $this->warehouseRequestContext($request);
 
         $orders = $this->pickingService->getAvailableOrders(

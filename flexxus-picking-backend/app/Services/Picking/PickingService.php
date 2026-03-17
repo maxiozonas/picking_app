@@ -48,10 +48,13 @@ class PickingService implements PickingServiceInterface
         FlexxusDataFormatter $formatter,
         StockValidationServiceInterface $stockValidationService,
         StockCacheServiceInterface $stockCacheService,
-        WarehouseExecutionContextResolverInterface $warehouseContextResolver
+        WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        ?FlexxusOrderSnapshotService $snapshotService = null
     ) {
+        $snapshotService ??= new FlexxusOrderSnapshotService($orderService);
+
         $this->listAvailableOrdersUseCase = new ListAvailableOrdersUseCase(
-            $orderService,
+            $snapshotService,
             $warehouseContextResolver
         );
         $this->getOrderDetailUseCase = new GetOrderDetailUseCase(

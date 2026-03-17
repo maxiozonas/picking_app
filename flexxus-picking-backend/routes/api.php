@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum', 'role.admin')->prefix('admin')->group(function
 
 Route::middleware(['auth:sanctum', 'warehouse.override'])->prefix('picking')->group(function () {
     Route::get('/orders', [PickingController::class, 'index']);
+    Route::post('/orders/refresh', [PickingController::class, 'refreshOrders']);
     Route::get('/orders/{order_number}', [PickingController::class, 'show']);
     Route::post('/orders/{order_number}/start', [PickingController::class, 'start']);
     Route::post('/orders/{order_number}/items/{product_code}/pick', [PickingController::class, 'pickItem']);

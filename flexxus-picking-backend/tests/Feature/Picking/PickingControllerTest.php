@@ -45,6 +45,28 @@ class PickingControllerTest extends TestCase
             ]);
     }
 
+    public function test_can_force_refresh_picking_orders(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $requestContext = ['warehouse_id' => $user->warehouse_id, 'user_id' => $user->id];
+
+        $this->mock(PickingServiceInterface::class, function ($mock) use ($user, $requestContext) {
+            $mock->shouldReceive('getAvailableOrders')
+                ->once()
+                ->with($user->id, ['force_refresh' => true], $requestContext)
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15));
+        });
+
+        $response = $this->postJson('/api/picking/orders/refresh');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [],
+            ]);
+    }
+
     public function test_can_show_order_detail(): void
     {
         $user = User::factory()->create();
@@ -379,6 +401,9 @@ class PickingControllerTest extends TestCase
     public function test_unauthenticated_user_cannot_access_picking_endpoints(): void
     {
         $response = $this->getJson('/api/picking/orders');
+        $response->assertStatus(401);
+
+        $response = $this->postJson('/api/picking/orders/refresh');
         $response->assertStatus(401);
     }
 

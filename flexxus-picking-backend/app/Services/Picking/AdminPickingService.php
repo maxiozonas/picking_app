@@ -4,6 +4,7 @@ namespace App\Services\Picking;
 
 use App\Http\Resources\Admin\AdminOrderItemResource;
 use App\Http\Resources\PickingAlertResource;
+use App\Models\FlexxusOrderSnapshot;
 use App\Models\PickingOrderProgress;
 use App\Models\Warehouse;
 use App\Services\Picking\Interfaces\AdminPickingServiceInterface;
@@ -18,7 +19,8 @@ class AdminPickingService implements AdminPickingServiceInterface
     private const CACHE_TTL_SECONDS = 120; // 2 minutes
 
     public function __construct(
-        private FlexxusOrderServiceInterface $orderService
+        private FlexxusOrderServiceInterface $orderService,
+        private FlexxusOrderSnapshotService $snapshotService
     ) {}
 
     public function getPendingOrders(array $filters = []): LengthAwarePaginator
@@ -28,15 +30,8 @@ class AdminPickingService implements AdminPickingServiceInterface
 
         $allOrders = collect();
         foreach ($warehouses as $warehouse) {
-            $cacheKey = $this->buildCacheKey($date, $warehouse);
-
-            $flexxusOrders = Cache::remember($cacheKey, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)), function () use ($date, $warehouse) {
-                return $this->orderService->getOrdersByDateAndWarehouse($date, $warehouse);
-            });
-
-            $allOrders = $allOrders->merge(
-                $this->buildOrdersForWarehouse(collect($flexxusOrders), $warehouse)
-            );
+            $snapshots = $this->snapshotService->ensureSnapshotsForWarehouse($warehouse, $date);
+            $allOrders = $allOrders->merge($this->buildOrdersForWarehouse($snapshots, $warehouse));
         }
 
         return $this->paginateOrders($allOrders, $filters);
@@ -47,20 +42,11 @@ class AdminPickingService implements AdminPickingServiceInterface
         $warehouses = $this->resolveWarehouses($filters);
         $date = $filters['date_from'] ?? now()->format('Y-m-d');
 
-        $allOrders = collect();
         foreach ($warehouses as $warehouse) {
-            $cacheKey = $this->buildCacheKey($date, $warehouse);
-            Cache::forget($cacheKey);
-
-            $flexxusOrders = $this->orderService->getOrdersByDateAndWarehouse($date, $warehouse, true);
-            Cache::put($cacheKey, $flexxusOrders, now()->addSeconds(config('picking.admin_orders_cache_ttl', self::CACHE_TTL_SECONDS)));
-
-            $allOrders = $allOrders->merge(
-                $this->buildOrdersForWarehouse(collect($flexxusOrders), $warehouse)
-            );
+            $this->snapshotService->syncForWarehouse($warehouse, $date, true);
         }
 
-        return $this->paginateOrders($allOrders, $filters);
+        return $this->getPendingOrders($filters);
     }
 
     public function getPendingCounts(array $filters = []): array
@@ -137,10 +123,9 @@ class AdminPickingService implements AdminPickingServiceInterface
         return $warehouse->id.'_'.trim($warehouse->code);
     }
 
-    private function buildOrdersForWarehouse(Collection $flexxusOrders, Warehouse $warehouse): Collection
+    private function buildOrdersForWarehouse(Collection $snapshots, Warehouse $warehouse): Collection
     {
-        $orderNumbers = $flexxusOrders->map(fn ($o) => 'NP '.($o['NUMEROCOMPROBANTE'] ?? ''));
-        $orderNumbersNormalized = $orderNumbers->map(fn ($o) => OrderNumberParser::normalize($o));
+        $orderNumbersNormalized = $snapshots->pluck('order_number');
 
         $localProgress = PickingOrderProgress::whereIn('order_number', $orderNumbersNormalized)
             ->where('warehouse_id', $warehouse->id)
@@ -148,29 +133,28 @@ class AdminPickingService implements AdminPickingServiceInterface
             ->get()
             ->keyBy('order_number');
 
-        return $this->mergeWithLocalProgress($flexxusOrders, $localProgress, $warehouse);
+        return $this->mergeWithLocalProgress($snapshots, $localProgress, $warehouse);
     }
 
-    private function mergeWithLocalProgress(Collection $flexxusOrders, Collection $localProgress, Warehouse $warehouse): Collection
+    private function mergeWithLocalProgress(Collection $snapshots, Collection $localProgress, Warehouse $warehouse): Collection
     {
-        return $flexxusOrders->map(function ($flexxusOrder) use ($localProgress, $warehouse) {
-            $rawOrderNumber = 'NP '.($flexxusOrder['NUMEROCOMPROBANTE'] ?? '');
-            $orderNumber = OrderNumberParser::normalize($rawOrderNumber);
-            $parsed = OrderNumberParser::parse($rawOrderNumber);
+        return $snapshots->map(function (FlexxusOrderSnapshot $snapshot) use ($localProgress, $warehouse) {
+            $orderNumber = $snapshot->order_number;
+            $parsed = OrderNumberParser::parse($orderNumber);
             $progress = $localProgress->get($orderNumber);
 
             return [
                 'order_type' => $parsed['order_type'],
                 'order_number' => $parsed['canonical_key'],
-                'customer' => $flexxusOrder['RAZONSOCIAL'] ?? null,
+                'customer' => $snapshot->customer,
                 'warehouse' => [
                     'id' => $warehouse->id,
                     'code' => $warehouse->code,
                     'name' => $warehouse->name,
                 ],
-                'total' => (float) ($flexxusOrder['TOTAL'] ?? 0),
-                'delivery_type' => $flexxusOrder['delivery_type'] ?? null,
-                'flexxus_created_at' => $flexxusOrder['FECHACOMPROBANTE'] ?? null,
+                'total' => (float) $snapshot->total,
+                'delivery_type' => $snapshot->delivery_type,
+                'flexxus_created_at' => $snapshot->payload['FECHACOMPROBANTE'] ?? $snapshot->flexxus_created_at?->toIso8601String(),
                 'items_count' => 0,
                 'status' => $progress ? $progress->status : 'pending',
                 'started_at' => $progress?->started_at?->toIso8601String(),
