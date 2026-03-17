@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ShoppingCart, ListTodo, Package, Boxes, Users } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, ListTodo, Package, Boxes, Users, CircleCheckBig } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'En Proceso', href: '/orders/in-progress', icon: ListTodo },
+  { name: 'Completados', href: '/orders/completed', icon: CircleCheckBig },
   { name: 'Inventario', href: '/inventory', icon: Package },
   { name: 'Empleados', href: '/employees', icon: Users },
 ]

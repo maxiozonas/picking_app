@@ -18,6 +18,9 @@ const OrdersPage = lazy(() => import('@/pages/OrdersPage').then((m) => ({ defaul
 const InProgressPage = lazy(() =>
   import('@/pages/InProgressPage').then((m) => ({ default: m.InProgressPage }))
 )
+const CompletedOrdersPage = lazy(() =>
+  import('@/pages/CompletedOrdersPage').then((m) => ({ default: m.CompletedOrdersPage }))
+)
 const OrderDetailPage = lazy(() =>
   import('@/pages/OrderDetailPage').then((m) => ({ default: m.OrderDetailPage }))
 )
@@ -70,6 +73,7 @@ function App() {
                         <Route index element={<DashboardPage />} />
                         <Route path="orders" element={<OrdersPage />} />
                         <Route path="orders/in-progress" element={<InProgressPage />} />
+                        <Route path="orders/completed" element={<CompletedOrdersPage />} />
                         <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
                         <Route path="inventory" element={<InventoryPage />} />
                         <Route path="employees" element={<EmployeesPage />} />
