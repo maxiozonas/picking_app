@@ -2,11 +2,14 @@
 
 namespace App\Services\Picking\UseCases;
 
+use App\Events\Broadcasting\OrderCompletedBroadcastEvent;
 use App\Exceptions\Picking\InvalidOrderStateException;
 use App\Exceptions\Picking\OrderNotFoundException;
 use App\Exceptions\Picking\UnauthorizedOperationException;
 use App\Models\PickingOrderEvent;
 use App\Models\PickingOrderProgress;
+use App\Models\User;
+use App\Services\Broadcasting\BroadcastingService;
 use App\Services\Picking\DTO\PickingRequestContext;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\OrderNumberParser;
@@ -15,7 +18,8 @@ use Illuminate\Support\Facades\DB;
 final class CompleteOrderUseCase
 {
     public function __construct(
-        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver
+        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        private readonly BroadcastingService $broadcaster
     ) {}
 
     public function execute(string $orderNumber, int $userId, PickingRequestContext $requestContext): PickingOrderProgress
@@ -73,6 +77,20 @@ final class CompleteOrderUseCase
                 'event_type' => 'order_completed',
                 'message' => 'Pedido completado',
             ]);
+
+            $user = User::findOrFail($userId);
+            $totalItems = $progress->items()->count();
+            $pickedItems = $progress->items()->where('status', 'completed')->count();
+
+            $this->broadcaster->dispatch(new OrderCompletedBroadcastEvent(
+                orderNumber: $canonicalOrderNumber,
+                warehouseId: $context->warehouseId,
+                userId: $userId,
+                userName: $user->name,
+                totalItems: $totalItems,
+                pickedItems: $pickedItems,
+                message: 'Pedido completado',
+            ));
 
             return $progress->fresh();
         };

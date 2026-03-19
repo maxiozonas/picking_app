@@ -20,6 +20,7 @@ use App\Services\Picking\UseCases\ListAvailableOrdersUseCase;
 use App\Services\Picking\UseCases\PickItemUseCase;
 use App\Services\Picking\UseCases\ResolveAlertUseCase;
 use App\Services\Picking\UseCases\StartOrderUseCase;
+use App\Services\Broadcasting\BroadcastingService;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class PickingService implements PickingServiceInterface
@@ -49,6 +50,7 @@ class PickingService implements PickingServiceInterface
         StockValidationServiceInterface $stockValidationService,
         StockCacheServiceInterface $stockCacheService,
         WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        BroadcastingService $broadcaster,
         ?FlexxusOrderSnapshotService $snapshotService = null
     ) {
         $snapshotService ??= new FlexxusOrderSnapshotService($orderService);
@@ -66,14 +68,16 @@ class PickingService implements PickingServiceInterface
         $this->startOrderUseCase = new StartOrderUseCase(
             $orderService,
             $stockCacheService,
-            $warehouseContextResolver
+            $warehouseContextResolver,
+            $broadcaster
         );
         $this->pickItemUseCase = new PickItemUseCase(
             $stockValidationService,
-            $warehouseContextResolver
+            $warehouseContextResolver,
+            $broadcaster
         );
-        $this->completeOrderUseCase = new CompleteOrderUseCase($warehouseContextResolver);
-        $this->createAlertUseCase = new CreateAlertUseCase($warehouseContextResolver);
+        $this->completeOrderUseCase = new CompleteOrderUseCase($warehouseContextResolver, $broadcaster);
+        $this->createAlertUseCase = new CreateAlertUseCase($warehouseContextResolver, $broadcaster);
         $this->getAlertsUseCase = new GetAlertsUseCase;
         $this->resolveAlertUseCase = new ResolveAlertUseCase;
         $this->getStockForItemUseCase = new GetStockForItemUseCase(

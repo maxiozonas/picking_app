@@ -2,11 +2,14 @@
 
 namespace App\Services\Picking\UseCases;
 
+use App\Events\Broadcasting\OrderStartedBroadcastEvent;
 use App\Exceptions\Picking\InvalidOrderStateException;
 use App\Exceptions\Picking\OrderNotFoundException;
 use App\Models\PickingOrderEvent;
 use App\Models\PickingOrderProgress;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Broadcasting\BroadcastingService;
 use App\Services\Picking\DTO\PickingRequestContext;
 use App\Services\Picking\Interfaces\FlexxusOrderServiceInterface;
 use App\Services\Picking\Interfaces\StockCacheServiceInterface;
@@ -18,7 +21,8 @@ final class StartOrderUseCase
     public function __construct(
         private readonly FlexxusOrderServiceInterface $orderService,
         private readonly StockCacheServiceInterface $stockCacheService,
-        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver
+        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        private readonly BroadcastingService $broadcaster
     ) {}
 
     public function execute(string $orderNumber, int $userId, PickingRequestContext $requestContext): PickingOrderProgress
@@ -98,6 +102,16 @@ final class StartOrderUseCase
             'event_type' => 'order_started',
             'message' => 'Pedido iniciado',
         ]);
+
+        $user = User::findOrFail($context->userId);
+
+        $this->broadcaster->dispatch(new OrderStartedBroadcastEvent(
+            orderNumber: $canonicalOrderNumber,
+            warehouseId: $context->warehouseId,
+            userId: $context->userId,
+            userName: $user->name,
+            message: 'Pedido iniciado',
+        ));
 
         return $progress->load('items');
     }

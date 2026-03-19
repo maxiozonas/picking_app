@@ -2,6 +2,7 @@
 
 namespace App\Services\Picking\UseCases;
 
+use App\Events\Broadcasting\PickingProgressBroadcastEvent;
 use App\Exceptions\Picking\InsufficientStockException;
 use App\Exceptions\Picking\InvalidOrderStateException;
 use App\Exceptions\Picking\OrderNotFoundException;
@@ -9,6 +10,7 @@ use App\Exceptions\Picking\UnauthorizedOperationException;
 use App\Models\PickingOrderEvent;
 use App\Models\PickingOrderProgress;
 use App\Models\User;
+use App\Services\Broadcasting\BroadcastingService;
 use App\Services\Picking\DTO\PickingRequestContext;
 use App\Services\Picking\Interfaces\StockValidationServiceInterface;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
@@ -19,7 +21,8 @@ final class PickItemUseCase
 {
     public function __construct(
         private readonly StockValidationServiceInterface $stockValidationService,
-        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver
+        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        private readonly BroadcastingService $broadcaster
     ) {}
 
     public function execute(
@@ -119,6 +122,24 @@ final class PickItemUseCase
                 'message' => $eventMessage,
             ]);
 
+            $allItems = $progress->items()->get();
+            $pickedItems = $allItems->where('status', 'completed')->count();
+            $totalItems = $allItems->count();
+            $progressPercent = $totalItems > 0 ? ($pickedItems / $totalItems) * 100 : 0;
+
+            $this->broadcaster->dispatch(new PickingProgressBroadcastEvent(
+                orderNumber: $canonicalOrderNumber,
+                warehouseId: $context->warehouseId,
+                userId: $userId,
+                totalItems: $totalItems,
+                pickedItems: $pickedItems,
+                progressPercent: $progressPercent,
+                productCode: $productCode,
+                quantityPicked: $quantity,
+                eventType: $eventType,
+                message: $eventMessage,
+            ));
+
             $latestValidation = $this->stockValidationService->getLatestValidation($orderNumber, $productCode);
 
             $stockAfterPick = null;
@@ -145,7 +166,7 @@ final class PickItemUseCase
                 $result['message'] = 'Item completado';
             }
 
-            $allItems = $progress->items()->get();
+            // Reuse already-fetched $allItems collection
             $allCompleted = $allItems->every(fn ($i) => $i->status === 'completed');
 
             if ($allCompleted) {

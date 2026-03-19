@@ -2,8 +2,10 @@
 
 namespace App\Services\Picking\UseCases;
 
+use App\Events\Broadcasting\StockAlertBroadcastEvent;
 use App\Models\PickingAlert;
 use App\Models\PickingOrderProgress;
+use App\Services\Broadcasting\BroadcastingService;
 use App\Services\Picking\DTO\PickingRequestContext;
 use App\Services\Picking\Interfaces\WarehouseExecutionContextResolverInterface;
 use App\Services\Picking\OrderNumberParser;
@@ -11,7 +13,8 @@ use App\Services\Picking\OrderNumberParser;
 final class CreateAlertUseCase
 {
     public function __construct(
-        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver
+        private readonly WarehouseExecutionContextResolverInterface $warehouseContextResolver,
+        private readonly BroadcastingService $broadcaster
     ) {}
 
     public function execute(array $data, int $userId, PickingRequestContext $requestContext): PickingAlert
@@ -38,6 +41,16 @@ final class CreateAlertUseCase
             $progress->issues_count++;
             $progress->save();
         }
+
+        $this->broadcaster->dispatch(new StockAlertBroadcastEvent(
+            alertType: $data['alert_type'],
+            message: $data['message'],
+            warehouseId: $context->warehouseId,
+            userId: $context->userId,
+            severity: $data['severity'] ?? 'medium',
+            productCode: $data['product_code'] ?? null,
+            orderNumber: $canonicalOrderNumber,
+        ));
 
         return $alert->load(['warehouse', 'reporter']);
     }
