@@ -5,10 +5,32 @@ import { pickingQueryKeys } from '../picking/hooks'
 import type { OrderDetail } from '../picking/types'
 import { createOrderAlert } from './api'
 import type { CreateAlertInput, PickingAlert } from './types'
+import { useUserChannel } from '../../hooks/use-websocket'
+import { useAuthStore } from '../../stores/auth-store'
 
 export const alertsQueryKeys = {
   all: ['order-alerts'] as const,
   list: (orderNumber: string) => ['order-alerts', orderNumber] as const,
+}
+
+/**
+ * Hook for listening to personal alerts via WebSocket
+ *
+ * Subscribes to private-user.{userId} channel for real-time stock alerts
+ * and order assignments.
+ */
+export function usePersonalAlerts(options?: {
+  onStockAlert?: (alert: PickingAlert) => void
+  onOrderAssigned?: (order: any) => void
+}) {
+  const user = useAuthStore((state) => state.user)
+  const userId = user?.id ?? null
+
+  useUserChannel(userId, {
+    enabled: !!userId,
+    onStockAlert: options?.onStockAlert,
+    onOrderAssigned: options?.onOrderAssigned,
+  })
 }
 
 function mergeAlert(detail: OrderDetail, alert: PickingAlert): OrderDetail {

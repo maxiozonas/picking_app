@@ -2,6 +2,8 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
 import { getPendingOrders } from './api'
+import { useWarehouseChannel } from '../../hooks/use-websocket'
+import { useAuthStore } from '../../stores/auth-store'
 
 const DEFAULT_PAGE_SIZE = 20
 const DEFAULT_DEBOUNCE_MS = 350
@@ -24,8 +26,18 @@ export function useDebouncedValue<T>(value: T, delay = DEFAULT_DEBOUNCE_MS) {
   return debouncedValue
 }
 
+/**
+ * Hook for fetching infinite pending orders with WebSocket subscriptions
+ *
+ * Automatically subscribes to warehouse channel for real-time updates
+ * when user is authenticated and has a warehouse assigned.
+ */
 export function useInfinitePendingOrders(search: string, pageSize = DEFAULT_PAGE_SIZE) {
-  return useInfiniteQuery({
+  const user = useAuthStore((state) => state.user)
+  const warehouseId = user?.warehouseId ?? null
+
+  // Query for pending orders
+  const query = useInfiniteQuery({
     queryKey: pendingOrdersQueryKeys.list(search, pageSize),
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
@@ -37,4 +49,11 @@ export function useInfinitePendingOrders(search: string, pageSize = DEFAULT_PAGE
     getNextPageParam: (lastPage) =>
       lastPage.meta.currentPage < lastPage.meta.lastPage ? lastPage.meta.currentPage + 1 : undefined,
   })
+
+  // Subscribe to warehouse channel for real-time updates
+  useWarehouseChannel(warehouseId, {
+    enabled: !!warehouseId && query.isSuccess,
+  })
+
+  return query
 }
