@@ -12,5 +12,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // WebSocket proxy for local development
+    // Routes ws://localhost:3000/ws → ws://localhost:6001
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:6001',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
 })
