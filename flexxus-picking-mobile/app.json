@@ -74,7 +74,11 @@
       "expo-secure-store"
     ],
     "extra": {
-      "apiUrl": "http://localhost:8000/api"
+      "apiUrl": "http://localhost:8000/api",
+      "websocketEnabled": false,
+      "websocketHost": "localhost",
+      "websocketPort": 6001,
+      "pusherAppKey": "local-key"
     },
     "web": {
       "favicon": "./assets/favicon.png"
